@@ -1,0 +1,33 @@
+# Configuración del sistema vía e-mail (Grupo 17 SA).
+# Copie este archivo como config.properties y complete los datos.
+# config.properties NO se sube a GitHub (está en .gitignore) porque lleva contraseñas.
+
+# ---------- Base de datos PostgreSQL ----------
+# En el servidor de la materia: jdbc:postgresql://db.tecnoweb.org.bo:5432/db_grupo17sa
+db.url=jdbc:postgresql://localhost:5432/db_grupo17sa
+db.usuario=grupo17sa
+db.clave=
+
+# ---------- Correo entrante: POP3 por sockets ----------
+pop3.servidor=mail.tecnoweb.org.bo
+pop3.puerto=110
+pop3.usuario=grupo17sa
+pop3.clave=
+# Cada cuántos segundos se revisa el buzón
+pop3.intervalo=10
+
+# ---------- Correo saliente: SMTP por sockets ----------
+# Servidor de la materia: mail.tecnoweb.org.bo, puerto 25, seguridad ninguna, sin usuario.
+# Gmail (si el puerto 25 está bloqueado): smtp.gmail.com, puerto 587, seguridad starttls,
+#   usuario = la cuenta de Gmail, clave = una contraseña de aplicación de Google.
+smtp.servidor=mail.tecnoweb.org.bo
+smtp.puerto=25
+# ninguna | starttls | ssl
+smtp.seguridad=ninguna
+smtp.usuario=
+smtp.clave=
+smtp.remitente=grupo17sa@tecnoweb.org.bo
+
+# ---------- Permisos (temporal, hasta integrar el CU1 Gestión de Usuarios) ----------
+# Correos que pueden usar los comandos de administración, separados por comas.
+admin.correos=

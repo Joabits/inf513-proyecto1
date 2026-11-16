@@ -1,0 +1,17 @@
+# Compilación
+target/
+
+# Configuración local con contraseñas (se sube solo config.properties.ejemplo)
+config.properties
+
+# Archivos generados al ejecutar
+logs/
+salida/
+
+# IDE
+.vscode/
+.idea/
+*.iml
+.classpath
+.project
+.settings/
