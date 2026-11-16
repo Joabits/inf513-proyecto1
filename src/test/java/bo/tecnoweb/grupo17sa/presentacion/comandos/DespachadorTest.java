@@ -51,6 +51,21 @@ class DespachadorTest {
     }
 
     @Test
+    void opcionFueraDeLaLista() {
+        Respuesta r = despachador.procesar("empresa@x.com", "SOLINN[\"COMPRA\",\"Tienda\",\"\",\"\",\"Hola\"]");
+        assertFalse(r.esExito());
+        assertTrue(r.mensaje().contains("debe ser uno de estos valores: SERVICIO, POSTULACION"));
+    }
+
+    @Test
+    void anioDeTitulacionNoNumerico() {
+        Respuesta r = despachador.procesar("grad@x.com",
+                "REGGRA[\"Ana\",\"Paz\",\"\",\"dos mil\",\"\",\"\",\"SIN_EMPLEO\",\"\"]");
+        assertFalse(r.esExito());
+        assertTrue(r.mensaje().contains("El parámetro 4 (anio_titulacion) debe ser un número entero"));
+    }
+
+    @Test
     void asuntoMalEscrito() {
         Respuesta r = despachador.procesar("visitante@x.com", "LISBAN[\"*\"");
         assertFalse(r.esExito());
