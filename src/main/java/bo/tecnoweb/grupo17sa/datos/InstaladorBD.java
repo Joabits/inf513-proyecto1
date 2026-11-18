@@ -17,7 +17,8 @@ public final class InstaladorBD {
             "sql/cu2_portal.sql",
             "sql/cu5_vinculacion.sql",
             "sql/cu1_usuarios.sql",
-            "sql/cu7_contacto.sql"
+            "sql/cu7_contacto.sql",
+            "sql/cu4_investigacion.sql"
     };
 
     private InstaladorBD() {

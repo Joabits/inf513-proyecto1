@@ -34,6 +34,7 @@ public class Despachador {
     private final List<ModuloComandos> modulos = List.of(
             new ComandosCU1(),
             new ComandosCU2(),
+            new ComandosCU4(),
             new ComandosCU5(),
             new ComandosCU7(),
             new ComandosCU8()
