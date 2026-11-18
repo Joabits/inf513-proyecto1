@@ -17,7 +17,8 @@ class DespachadorTest {
     void ayudaListaLosComandos() {
         Respuesta r = despachador.procesar("visitante@x.com", "HELP");
         assertTrue(r.esExito());
-        assertTrue(r.bloques().get(0).texto().contains("INSBAN[\"titulo\",\"subtitulo\",\"imagen_url\",\"enlace\",\"orden\"]"));
+        // Los módulos van en orden de caso de uso (CU1 primero): se busca en todos los bloques, no en el primero
+        assertTrue(r.bloques().stream().anyMatch(b -> b.texto().contains("INSBAN[\"titulo\",\"subtitulo\",\"imagen_url\",\"enlace\",\"orden\"]")));
         assertFalse(despachador.procesar("visitante@x.com", "HELP[\"CU9\"]").esExito());
     }
 
