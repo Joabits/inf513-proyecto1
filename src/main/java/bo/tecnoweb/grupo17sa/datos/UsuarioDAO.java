@@ -97,6 +97,22 @@ public class UsuarioDAO {
         }
     }
 
+    /** Correos de los usuarios activos que administran el caso de uso (su rol lo tiene o tiene '*'). */
+    public List<String> correosConPermiso(Connection con, String modulo) throws SQLException {
+        String sql = "SELECT DISTINCT u.correo FROM usuario u JOIN rol_modulo m ON m.rol_id = u.rol_id"
+                + " WHERE u.activo AND (m.modulo = '*' OR m.modulo = ?) ORDER BY u.correo";
+        try (PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, modulo);
+            try (ResultSet rs = ps.executeQuery()) {
+                List<String> correos = new ArrayList<>();
+                while (rs.next()) {
+                    correos.add(rs.getString(1));
+                }
+                return correos;
+            }
+        }
+    }
+
     /** Usuarios activos con acceso total ('*'), sin contar al indicado. */
     public int contarAdministradoresActivos(Connection con, int excluirId) throws SQLException {
         String sql = "SELECT count(DISTINCT u.id) FROM usuario u JOIN rol_modulo m ON m.rol_id = u.rol_id"

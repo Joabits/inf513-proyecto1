@@ -16,7 +16,8 @@ public final class InstaladorBD {
     private static final String[] SCRIPTS = {
             "sql/cu2_portal.sql",
             "sql/cu5_vinculacion.sql",
-            "sql/cu1_usuarios.sql"
+            "sql/cu1_usuarios.sql",
+            "sql/cu7_contacto.sql"
     };
 
     private InstaladorBD() {

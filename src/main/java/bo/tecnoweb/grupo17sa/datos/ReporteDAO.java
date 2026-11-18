@@ -34,6 +34,7 @@ public class ReporteDAO {
             {"CU5", "Graduados", "graduado"},
             {"CU1", "Usuarios", "usuario"},
             {"CU1", "Roles", "rol"},
+            {"CU7", "Mensajes de contacto", "mensaje_contacto"},
     };
 
     private static final Set<String> COLUMNAS_BITACORA = Set.of("usuario", "modulo", "accion");
