@@ -1,6 +1,7 @@
 package bo.tecnoweb.grupo17sa.negocio;
 
 import bo.tecnoweb.grupo17sa.datos.BitacoraDAO;
+import bo.tecnoweb.grupo17sa.datos.ResponsableDAO;
 import bo.tecnoweb.grupo17sa.modelo.RegistroBitacora;
 
 import java.sql.Connection;
@@ -13,6 +14,7 @@ import java.util.List;
 /**
  * Bitácora de auditoría (RF-19). Todos los casos de uso llaman a registrar() dentro de su transacción,
  * después de crear, modificar o eliminar algo, así la acción y su registro se guardan juntos.
+ * Al crear, modificar o publicar, también guarda en la columna usuario_id del registro quién lo hizo.
  */
 public class BitacoraNegocio {
 
@@ -22,6 +24,7 @@ public class BitacoraNegocio {
     public static final String PUBLICAR = "PUBLICAR";
 
     private final BitacoraDAO dao = new BitacoraDAO();
+    private final ResponsableDAO responsable = new ResponsableDAO();
 
     /**
      * @param usuario  correo de quien hizo la acción
@@ -33,7 +36,11 @@ public class BitacoraNegocio {
      */
     public void registrar(Connection con, String usuario, String accion, String modulo, String tabla,
                           Object elemento, String detalle) throws SQLException {
-        dao.registrar(con, usuario, accion, modulo, tabla, elemento == null ? null : String.valueOf(elemento), detalle);
+        String clave = elemento == null ? null : String.valueOf(elemento);
+        dao.registrar(con, usuario, accion, modulo, tabla, clave, detalle);
+        if (!ELIMINAR.equals(accion)) {
+            responsable.asignar(con, tabla, clave, usuario);
+        }
     }
 
     /** "*" todo; una fecha (AAAA-MM-DD o DD/MM/AAAA) los registros de ese día; otro texto busca coincidencias. */

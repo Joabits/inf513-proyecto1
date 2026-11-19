@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS convenio (
     responsable   VARCHAR(150),
     logo_url      VARCHAR(500),
     creado        TIMESTAMP    NOT NULL DEFAULT now(),
+    usuario_id    INTEGER      REFERENCES usuario (id) ON DELETE SET NULL,
     CHECK (fecha_fin IS NULL OR fecha_fin >= fecha_inicio)
 );
 
@@ -23,7 +24,8 @@ CREATE TABLE IF NOT EXISTS convenio (
 CREATE TABLE IF NOT EXISTS innova_servicio (
     id          SERIAL       PRIMARY KEY,
     nombre      VARCHAR(150) NOT NULL,
-    descripcion VARCHAR(500) NOT NULL
+    descripcion VARCHAR(500) NOT NULL,
+    usuario_id  INTEGER      REFERENCES usuario (id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS innova_miembro (
@@ -31,7 +33,8 @@ CREATE TABLE IF NOT EXISTS innova_miembro (
     nombre      VARCHAR(150) NOT NULL,
     cargo       VARCHAR(100) NOT NULL,
     semestre    VARCHAR(30),
-    correo      VARCHAR(120)
+    correo      VARCHAR(120),
+    usuario_id  INTEGER      REFERENCES usuario (id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS innova_proyecto (
@@ -40,7 +43,8 @@ CREATE TABLE IF NOT EXISTS innova_proyecto (
     cliente     VARCHAR(200),
     descripcion VARCHAR(500) NOT NULL,
     anio        INTEGER      NOT NULL CHECK (anio BETWEEN 2000 AND 2100),
-    resultado   VARCHAR(500)
+    resultado   VARCHAR(500),
+    usuario_id  INTEGER      REFERENCES usuario (id) ON DELETE SET NULL
 );
 
 -- Solicitudes de servicio de empresas y postulaciones de estudiantes a INNOVA (RF-10)
@@ -56,7 +60,8 @@ CREATE TABLE IF NOT EXISTS innova_solicitud (
     observacion   VARCHAR(1000),
     fecha         TIMESTAMP     NOT NULL DEFAULT now(),
     atendido_por  VARCHAR(120),
-    atendido_en   TIMESTAMP
+    atendido_en   TIMESTAMP,
+    usuario_id    INTEGER       REFERENCES usuario (id) ON DELETE SET NULL
 );
 CREATE INDEX IF NOT EXISTS innova_solicitud_correo_idx ON innova_solicitud (correo);
 
@@ -73,8 +78,18 @@ CREATE TABLE IF NOT EXISTS graduado (
     sector          VARCHAR(15)  NOT NULL CHECK (sector IN ('PUBLICO', 'PRIVADO', 'INDEPENDIENTE', 'ONG', 'SIN_EMPLEO')),
     ciudad          VARCHAR(80),
     registrado      TIMESTAMP    NOT NULL DEFAULT now(),
-    actualizado     TIMESTAMP    NOT NULL DEFAULT now()
+    actualizado     TIMESTAMP    NOT NULL DEFAULT now(),
+    usuario_id      INTEGER      REFERENCES usuario (id) ON DELETE SET NULL
 );
+
+-- Responsable de cada registro (FK a usuario): el usuario que lo creó o modificó por última vez.
+-- La llena BitacoraNegocio al registrar la acción. Si la base se instaló antes, aquí se agrega la columna.
+ALTER TABLE convenio ADD COLUMN IF NOT EXISTS usuario_id INTEGER REFERENCES usuario (id) ON DELETE SET NULL;
+ALTER TABLE innova_servicio ADD COLUMN IF NOT EXISTS usuario_id INTEGER REFERENCES usuario (id) ON DELETE SET NULL;
+ALTER TABLE innova_miembro ADD COLUMN IF NOT EXISTS usuario_id INTEGER REFERENCES usuario (id) ON DELETE SET NULL;
+ALTER TABLE innova_proyecto ADD COLUMN IF NOT EXISTS usuario_id INTEGER REFERENCES usuario (id) ON DELETE SET NULL;
+ALTER TABLE innova_solicitud ADD COLUMN IF NOT EXISTS usuario_id INTEGER REFERENCES usuario (id) ON DELETE SET NULL;
+ALTER TABLE graduado ADD COLUMN IF NOT EXISTS usuario_id INTEGER REFERENCES usuario (id) ON DELETE SET NULL;
 
 -- ---------------------------------------------------------------------
 -- Datos iniciales y de ejemplo (nombres «Demo» y correos @example.com son ficticios)

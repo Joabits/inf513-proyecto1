@@ -9,7 +9,8 @@ CREATE TABLE IF NOT EXISTS investigacion_linea (
     id          SERIAL        PRIMARY KEY,
     nombre      VARCHAR(160)  NOT NULL UNIQUE,
     descripcion VARCHAR(1000),
-    creado      TIMESTAMP     NOT NULL DEFAULT now()
+    creado      TIMESTAMP     NOT NULL DEFAULT now(),
+    usuario_id  INTEGER       REFERENCES usuario (id) ON DELETE SET NULL
 );
 
 -- Proyectos de investigación, de investigación en aula (PIA) y de semillero (RF-07)
@@ -25,7 +26,8 @@ CREATE TABLE IF NOT EXISTS investigacion_proyecto (
     resumen     VARCHAR(1000) NOT NULL,
     publicado   BOOLEAN       NOT NULL DEFAULT TRUE,
     creado      TIMESTAMP     NOT NULL DEFAULT now(),
-    actualizado TIMESTAMP
+    actualizado TIMESTAMP,
+    usuario_id  INTEGER       REFERENCES usuario (id) ON DELETE SET NULL
 );
 
 -- Repositorio de documentos: reglamentos, resoluciones, formularios... (RF-06)
@@ -37,7 +39,8 @@ CREATE TABLE IF NOT EXISTS documento (
     enlace      VARCHAR(500)  NOT NULL CHECK (enlace ~ '^https?://'),
     publicado   BOOLEAN       NOT NULL DEFAULT TRUE,
     creado      TIMESTAMP     NOT NULL DEFAULT now(),
-    actualizado TIMESTAMP
+    actualizado TIMESTAMP,
+    usuario_id  INTEGER       REFERENCES usuario (id) ON DELETE SET NULL
 );
 
 -- Revista INNOVAR: ediciones (una nueva queda en borrador hasta publicarla) y sus artículos (RF-08)
@@ -51,6 +54,7 @@ CREATE TABLE IF NOT EXISTS revista_edicion (
     enlace_pdf  VARCHAR(500)  CHECK (enlace_pdf ~ '^https?://'),
     publicada   BOOLEAN       NOT NULL DEFAULT FALSE,
     creado      TIMESTAMP     NOT NULL DEFAULT now(),
+    usuario_id  INTEGER       REFERENCES usuario (id) ON DELETE SET NULL,
     UNIQUE (anio, numero)
 );
 
@@ -62,10 +66,19 @@ CREATE TABLE IF NOT EXISTS revista_articulo (
     resumen     VARCHAR(1000),
     enlace_pdf  VARCHAR(500)  CHECK (enlace_pdf ~ '^https?://'),
     orden       SMALLINT      NOT NULL DEFAULT 0,
-    creado      TIMESTAMP     NOT NULL DEFAULT now()
+    creado      TIMESTAMP     NOT NULL DEFAULT now(),
+    usuario_id  INTEGER       REFERENCES usuario (id) ON DELETE SET NULL
 );
 
 CREATE INDEX IF NOT EXISTS revista_articulo_edicion_idx ON revista_articulo (edicion_id, orden);
+
+-- Responsable de cada registro (FK a usuario): el usuario que lo creó o modificó por última vez.
+-- La llena BitacoraNegocio al registrar la acción. Si la base se instaló antes, aquí se agrega la columna.
+ALTER TABLE investigacion_linea ADD COLUMN IF NOT EXISTS usuario_id INTEGER REFERENCES usuario (id) ON DELETE SET NULL;
+ALTER TABLE investigacion_proyecto ADD COLUMN IF NOT EXISTS usuario_id INTEGER REFERENCES usuario (id) ON DELETE SET NULL;
+ALTER TABLE documento ADD COLUMN IF NOT EXISTS usuario_id INTEGER REFERENCES usuario (id) ON DELETE SET NULL;
+ALTER TABLE revista_edicion ADD COLUMN IF NOT EXISTS usuario_id INTEGER REFERENCES usuario (id) ON DELETE SET NULL;
+ALTER TABLE revista_articulo ADD COLUMN IF NOT EXISTS usuario_id INTEGER REFERENCES usuario (id) ON DELETE SET NULL;
 
 -- ---------------------------------------------------------------------
 -- Datos iniciales: líneas de investigación de la Carrera (se cambian con MODLIN)

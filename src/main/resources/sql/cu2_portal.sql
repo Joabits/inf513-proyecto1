@@ -9,7 +9,8 @@ CREATE TABLE IF NOT EXISTS configuracion (
     valor        TEXT         NOT NULL DEFAULT '',
     grupo        VARCHAR(20)  NOT NULL,
     descripcion  VARCHAR(150) NOT NULL,
-    actualizado  TIMESTAMP    NOT NULL DEFAULT now()
+    actualizado  TIMESTAMP    NOT NULL DEFAULT now(),
+    usuario_id   INTEGER      REFERENCES usuario (id) ON DELETE SET NULL
 );
 
 -- Carrusel de imágenes de la página de inicio (RF-01)
@@ -20,7 +21,8 @@ CREATE TABLE IF NOT EXISTS banner (
     imagen_url  VARCHAR(500) NOT NULL,
     enlace      VARCHAR(500),
     orden       INTEGER      NOT NULL DEFAULT 1 CHECK (orden > 0),
-    creado      TIMESTAMP    NOT NULL DEFAULT now()
+    creado      TIMESTAMP    NOT NULL DEFAULT now(),
+    usuario_id  INTEGER      REFERENCES usuario (id) ON DELETE SET NULL
 );
 
 -- Contenidos destacados de la página de inicio (RF-01)
@@ -30,7 +32,8 @@ CREATE TABLE IF NOT EXISTS destacado (
     descripcion VARCHAR(500) NOT NULL,
     enlace      VARCHAR(500),
     orden       INTEGER      NOT NULL DEFAULT 1 CHECK (orden > 0),
-    creado      TIMESTAMP    NOT NULL DEFAULT now()
+    creado      TIMESTAMP    NOT NULL DEFAULT now(),
+    usuario_id  INTEGER      REFERENCES usuario (id) ON DELETE SET NULL
 );
 
 -- Accesos rápidos a las plataformas de la Universidad (RF-01)
@@ -39,7 +42,8 @@ CREATE TABLE IF NOT EXISTS acceso_rapido (
     nombre      VARCHAR(100) NOT NULL,
     url         VARCHAR(500) NOT NULL,
     descripcion VARCHAR(250),
-    orden       INTEGER      NOT NULL DEFAULT 1 CHECK (orden > 0)
+    orden       INTEGER      NOT NULL DEFAULT 1 CHECK (orden > 0),
+    usuario_id  INTEGER      REFERENCES usuario (id) ON DELETE SET NULL
 );
 
 -- Información institucional (RF-02)
@@ -48,7 +52,8 @@ CREATE TABLE IF NOT EXISTS seccion_institucional (
     titulo      VARCHAR(150) NOT NULL,
     contenido   TEXT         NOT NULL,
     orden       INTEGER      NOT NULL DEFAULT 1,
-    actualizado TIMESTAMP    NOT NULL DEFAULT now()
+    actualizado TIMESTAMP    NOT NULL DEFAULT now(),
+    usuario_id  INTEGER      REFERENCES usuario (id) ON DELETE SET NULL
 );
 
 -- Redes sociales oficiales (RF-16)
@@ -56,7 +61,8 @@ CREATE TABLE IF NOT EXISTS red_social (
     id          SERIAL       PRIMARY KEY,
     nombre      VARCHAR(50)  NOT NULL UNIQUE,
     url         VARCHAR(500) NOT NULL,
-    orden       INTEGER      NOT NULL DEFAULT 1 CHECK (orden > 0)
+    orden       INTEGER      NOT NULL DEFAULT 1 CHECK (orden > 0),
+    usuario_id  INTEGER      REFERENCES usuario (id) ON DELETE SET NULL
 );
 
 -- Bitácora de auditoría (RF-19): la usan todos los casos de uso
@@ -68,9 +74,20 @@ CREATE TABLE IF NOT EXISTS bitacora (
     modulo      VARCHAR(5)   NOT NULL,
     tabla       VARCHAR(60)  NOT NULL,
     elemento    VARCHAR(60),
-    detalle     TEXT
+    detalle     TEXT,
+    usuario_id  INTEGER      REFERENCES usuario (id) ON DELETE SET NULL
 );
 CREATE INDEX IF NOT EXISTS bitacora_fecha_idx ON bitacora (fecha);
+
+-- Responsable de cada registro (FK a usuario): el usuario que lo creó o modificó por última vez.
+-- La llena BitacoraNegocio al registrar la acción. Si la base se instaló antes, aquí se agrega la columna.
+ALTER TABLE configuracion ADD COLUMN IF NOT EXISTS usuario_id INTEGER REFERENCES usuario (id) ON DELETE SET NULL;
+ALTER TABLE banner ADD COLUMN IF NOT EXISTS usuario_id INTEGER REFERENCES usuario (id) ON DELETE SET NULL;
+ALTER TABLE destacado ADD COLUMN IF NOT EXISTS usuario_id INTEGER REFERENCES usuario (id) ON DELETE SET NULL;
+ALTER TABLE acceso_rapido ADD COLUMN IF NOT EXISTS usuario_id INTEGER REFERENCES usuario (id) ON DELETE SET NULL;
+ALTER TABLE seccion_institucional ADD COLUMN IF NOT EXISTS usuario_id INTEGER REFERENCES usuario (id) ON DELETE SET NULL;
+ALTER TABLE red_social ADD COLUMN IF NOT EXISTS usuario_id INTEGER REFERENCES usuario (id) ON DELETE SET NULL;
+ALTER TABLE bitacora ADD COLUMN IF NOT EXISTS usuario_id INTEGER REFERENCES usuario (id) ON DELETE SET NULL;
 
 -- ---------------------------------------------------------------------
 -- Datos iniciales (los textos de ejemplo se cambian con MODCFG y MODINT)

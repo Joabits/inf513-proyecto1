@@ -14,7 +14,8 @@ CREATE TABLE IF NOT EXISTS noticia (
     fecha_publicacion TIMESTAMP    NOT NULL DEFAULT now(),
     publicado         BOOLEAN      NOT NULL DEFAULT true,
     orden             INTEGER      NOT NULL DEFAULT 1 CHECK (orden > 0),
-    creado            TIMESTAMP    NOT NULL DEFAULT now()
+    creado            TIMESTAMP    NOT NULL DEFAULT now(),
+    usuario_id        INTEGER      REFERENCES usuario (id) ON DELETE SET NULL
 );
 
 -- Comunicados y avisos urgentes (RF-08)
@@ -25,7 +26,8 @@ CREATE TABLE IF NOT EXISTS comunicado (
     prioridad         VARCHAR(20)  NOT NULL CHECK (prioridad IN ('BAJA','MEDIA','ALTA','URGENTE')),
     fecha_publicacion TIMESTAMP    NOT NULL DEFAULT now(),
     fecha_expiracion  TIMESTAMP,
-    creado            TIMESTAMP    NOT NULL DEFAULT now()
+    creado            TIMESTAMP    NOT NULL DEFAULT now(),
+    usuario_id        INTEGER      REFERENCES usuario (id) ON DELETE SET NULL
 );
 
 -- Agenda de eventos y actividades (RF-17)
@@ -37,7 +39,8 @@ CREATE TABLE IF NOT EXISTS evento (
     fecha_fin    TIMESTAMP,
     lugar        VARCHAR(200) NOT NULL,
     imagen_url   VARCHAR(500),
-    creado       TIMESTAMP    NOT NULL DEFAULT now()
+    creado       TIMESTAMP    NOT NULL DEFAULT now(),
+    usuario_id   INTEGER      REFERENCES usuario (id) ON DELETE SET NULL
 );
 
 -- Galería de imágenes (RF-18)
@@ -48,8 +51,16 @@ CREATE TABLE IF NOT EXISTS galeria (
     imagen_url  VARCHAR(500) NOT NULL,
     evento_id   INTEGER      REFERENCES evento(id) ON DELETE SET NULL,
     orden       INTEGER      NOT NULL DEFAULT 1 CHECK (orden > 0),
-    creado      TIMESTAMP    NOT NULL DEFAULT now()
+    creado      TIMESTAMP    NOT NULL DEFAULT now(),
+    usuario_id  INTEGER      REFERENCES usuario (id) ON DELETE SET NULL
 );
+
+-- Responsable de cada registro (FK a usuario): el usuario que lo creó o modificó por última vez.
+-- La llena BitacoraNegocio al registrar la acción. Si la base se instaló antes, aquí se agrega la columna.
+ALTER TABLE noticia ADD COLUMN IF NOT EXISTS usuario_id INTEGER REFERENCES usuario (id) ON DELETE SET NULL;
+ALTER TABLE comunicado ADD COLUMN IF NOT EXISTS usuario_id INTEGER REFERENCES usuario (id) ON DELETE SET NULL;
+ALTER TABLE evento ADD COLUMN IF NOT EXISTS usuario_id INTEGER REFERENCES usuario (id) ON DELETE SET NULL;
+ALTER TABLE galeria ADD COLUMN IF NOT EXISTS usuario_id INTEGER REFERENCES usuario (id) ON DELETE SET NULL;
 
 -- ---------------------------------------------------------------------
 -- Datos iniciales de ejemplo

@@ -81,6 +81,17 @@ flowchart TD
 
 Base `db_grupo17sa` (PostgreSQL). Scripts en `src/main/resources/sql/`; se instalan con `--instalar-bd`.
 
+**Responsable de cada registro.** Además de las columnas de cada tabla, todas las tablas de CU2 a CU7 (incluida
+`bitacora`) tienen `usuario_id`, FK a `usuario (id)` con `ON DELETE SET NULL`: el usuario que creó o modificó el
+registro por última vez. Así ninguna tabla queda suelta en el modelo: todas se relacionan con `usuario`.
+
+- La llena `BitacoraNegocio.registrar(...)` en la misma transacción de la acción (con `ResponsableDAO`), a partir del
+  correo del remitente; al eliminar no se toca.
+- Queda en `NULL` si el remitente no está en la tabla `usuario`: administradores de arranque y personas que usan
+  comandos públicos (`ENVMSJ`, `SOLINN`, `REGGRA`...). La bitácora conserva igual el correo en su columna `usuario`.
+- Cada script tiene `ALTER TABLE ... ADD COLUMN IF NOT EXISTS usuario_id ...`, así `--instalar-bd` también agrega la
+  columna a una base instalada antes.
+
 ### CU1 Gestión de Usuarios, roles y permisos (`cu1_usuarios.sql`)
 
 | Tabla | Columnas | Uso |
@@ -311,6 +322,8 @@ Solo debe haber **una** instancia leyendo el buzón: los correos se borran del s
 ## Cómo agregar un caso de uso
 
 1. `src/main/resources/sql/cuX_nombre.sql` con sus tablas (`CREATE TABLE IF NOT EXISTS`) y agregarlo a `InstaladorBD.SCRIPTS`.
+   Cada tabla lleva `usuario_id INTEGER REFERENCES usuario (id) ON DELETE SET NULL`, su `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`
+   y se agrega con su clave primaria en `ResponsableDAO.TABLAS` (`ScriptsSqlTest` falla si falta alguna de las tres).
 2. `modelo/`: un `record` por tabla.
 3. `datos/`: un DAO por tabla, solo con `PreparedStatement`.
 4. `negocio/`: las reglas del caso de uso. Cada alta, cambio o baja se hace dentro de `Transaccion.ejecutar(...)` y

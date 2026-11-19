@@ -17,8 +17,13 @@ CREATE TABLE IF NOT EXISTS mensaje_contacto (
     respondido_por  VARCHAR(120),
     respondido_en   TIMESTAMP,
     fecha           TIMESTAMP     NOT NULL DEFAULT now(),
+    usuario_id      INTEGER       REFERENCES usuario (id) ON DELETE SET NULL,
     CHECK (estado <> 'RESPONDIDO' OR respuesta IS NOT NULL)
 );
 
 CREATE INDEX IF NOT EXISTS mensaje_contacto_correo_idx ON mensaje_contacto (correo);
 CREATE INDEX IF NOT EXISTS mensaje_contacto_estado_idx ON mensaje_contacto (estado, fecha);
+
+-- Responsable de cada registro (FK a usuario): el usuario que lo creó o modificó por última vez.
+-- La llena BitacoraNegocio al registrar la acción. Si la base se instaló antes, aquí se agrega la columna.
+ALTER TABLE mensaje_contacto ADD COLUMN IF NOT EXISTS usuario_id INTEGER REFERENCES usuario (id) ON DELETE SET NULL;

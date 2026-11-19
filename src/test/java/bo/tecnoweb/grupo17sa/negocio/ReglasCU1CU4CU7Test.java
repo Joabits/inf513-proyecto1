@@ -16,15 +16,15 @@ class ReglasCU1CU4CU7Test {
     @Test
     void losScriptsSeDividenEnSentenciasCompletas() throws IOException {
         assertSentencias("sql/cu1_usuarios.sql", 6);
-        assertSentencias("sql/cu4_investigacion.sql", 7);
-        assertSentencias("sql/cu7_contacto.sql", 3);
+        assertSentencias("sql/cu4_investigacion.sql", 12);
+        assertSentencias("sql/cu7_contacto.sql", 4);
     }
 
     private static void assertSentencias(String script, int cantidad) throws IOException {
         List<String> sentencias = InstaladorBD.dividir(InstaladorBD.leerScript(script));
         assertEquals(cantidad, sentencias.size(), script);
         for (String sentencia : sentencias) {
-            assertTrue(sentencia.startsWith("CREATE") || sentencia.startsWith("INSERT"), sentencia);
+            assertTrue(sentencia.startsWith("CREATE") || sentencia.startsWith("ALTER") || sentencia.startsWith("INSERT"), sentencia);
         }
     }
 

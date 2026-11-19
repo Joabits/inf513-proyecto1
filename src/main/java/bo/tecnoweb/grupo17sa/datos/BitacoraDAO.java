@@ -21,7 +21,10 @@ public class BitacoraDAO {
 
     public void registrar(Connection con, String usuario, String accion, String modulo, String tabla,
                           String elemento, String detalle) throws SQLException {
-        String sql = "INSERT INTO bitacora (usuario, accion, modulo, tabla, elemento, detalle) VALUES (?, ?, ?, ?, ?, ?)";
+        // usuario guarda el correo tal como llegó (también el de los administradores de arranque);
+        // usuario_id es la FK al usuario registrado con ese correo, o NULL si no está en la tabla usuario.
+        String sql = "INSERT INTO bitacora (usuario, accion, modulo, tabla, elemento, detalle, usuario_id)"
+                + " VALUES (?, ?, ?, ?, ?, ?, " + ResponsableDAO.ID_USUARIO + ")";
         try (PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, usuario);
             ps.setString(2, accion);
@@ -29,6 +32,7 @@ public class BitacoraDAO {
             ps.setString(4, tabla);
             ps.setString(5, elemento);
             ps.setString(6, detalle);
+            ps.setString(7, usuario);
             ps.executeUpdate();
         }
     }

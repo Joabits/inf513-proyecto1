@@ -9,7 +9,8 @@ CREATE TABLE IF NOT EXISTS info_academica (
     titulo      VARCHAR(150) NOT NULL,
     contenido   TEXT         NOT NULL,
     orden       INTEGER      NOT NULL DEFAULT 1 CHECK (orden > 0),
-    actualizado TIMESTAMP    NOT NULL DEFAULT now()
+    actualizado TIMESTAMP    NOT NULL DEFAULT now(),
+    usuario_id  INTEGER      REFERENCES usuario (id) ON DELETE SET NULL
 );
 
 -- Malla curricular de asignaturas de la Carrera (RF-05)
@@ -19,7 +20,8 @@ CREATE TABLE IF NOT EXISTS materia (
     nombre        VARCHAR(150) NOT NULL,
     semestre      INTEGER      NOT NULL CHECK (semestre > 0),
     creditos      INTEGER      NOT NULL DEFAULT 0 CHECK (creditos >= 0),
-    prerrequisito VARCHAR(150)
+    prerrequisito VARCHAR(150),
+    usuario_id    INTEGER      REFERENCES usuario (id) ON DELETE SET NULL
 );
 
 -- Plantel docente y asignación de materias (RF-06)
@@ -29,8 +31,15 @@ CREATE TABLE IF NOT EXISTS docente (
     titulo     VARCHAR(150),
     cargo      VARCHAR(100),
     correo     VARCHAR(120),
-    materia_id INTEGER      REFERENCES materia(id) ON DELETE SET NULL
+    materia_id INTEGER      REFERENCES materia(id) ON DELETE SET NULL,
+    usuario_id INTEGER      REFERENCES usuario (id) ON DELETE SET NULL
 );
+
+-- Responsable de cada registro (FK a usuario): el usuario que lo creó o modificó por última vez.
+-- La llena BitacoraNegocio al registrar la acción. Si la base se instaló antes, aquí se agrega la columna.
+ALTER TABLE info_academica ADD COLUMN IF NOT EXISTS usuario_id INTEGER REFERENCES usuario (id) ON DELETE SET NULL;
+ALTER TABLE materia ADD COLUMN IF NOT EXISTS usuario_id INTEGER REFERENCES usuario (id) ON DELETE SET NULL;
+ALTER TABLE docente ADD COLUMN IF NOT EXISTS usuario_id INTEGER REFERENCES usuario (id) ON DELETE SET NULL;
 
 -- ---------------------------------------------------------------------
 -- Datos iniciales de ejemplo
