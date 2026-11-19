@@ -3,7 +3,8 @@
 # config.properties NO se sube a GitHub (está en .gitignore) porque lleva contraseñas.
 
 # ---------- Base de datos PostgreSQL ----------
-# En el servidor de la materia: jdbc:postgresql://db.tecnoweb.org.bo:5432/db_grupo17sa
+# En el servidor de la materia (esquema propio, public lo usa otro sistema):
+#   jdbc:postgresql://db.tecnoweb.org.bo:5432/db_grupo17sa?currentSchema=proyecto1
 db.url=jdbc:postgresql://localhost:5432/db_grupo17sa
 db.usuario=grupo17sa
 db.clave=
@@ -29,6 +30,6 @@ smtp.clave=
 smtp.remitente=grupo17sa@tecnoweb.org.bo
 
 # ---------- Administradores de arranque (CU1 Gestión de Usuarios) ----------
-# Los permisos se manejan con usuarios y roles en la base (INSUSU, INSROL...). Estos correos, separados por comas,
+# Los permisos se manejan con usuarios y sus roles fijos en la base (INSUSU, MODUSU). Estos correos, separados por comas,
 # tienen permiso aunque no estén registrados: sirven para crear el primer usuario. Se puede dejar vacío después.
 admin.correos=

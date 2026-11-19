@@ -329,6 +329,29 @@ En `config.properties`:
 
 Solo debe haber **una** instancia leyendo el buzón: los correos se borran del servidor al procesarlos.
 
+## Ejecución con la infraestructura de la materia
+
+El Proyecto 1 solo necesita el correo (POP3 y SMTP) y la base de datos de `tecnoweb.org.bo`, no acceso SSH
+(indicación del docente). El servicio corre en cualquier equipo con Java 17 que llegue a esos puertos.
+Revisa el buzón `grupo17sa@tecnoweb.org.bo` cada `pop3.intervalo` segundos y responde a cada remitente.
+
+En `db_grupo17sa` el esquema `public` ya lo usa otro sistema (con tablas `usuario`, `rol` y `bitacora`, entre otras),
+así que el Proyecto 1 se instala en su propio esquema `proyecto1`. Se crea una sola vez con `CREATE SCHEMA proyecto1;`
+y se indica en la conexión:
+
+```properties
+db.url=jdbc:postgresql://db.tecnoweb.org.bo:5432/db_grupo17sa?currentSchema=proyecto1
+```
+
+Si la red bloquea el puerto 25 de `mail.tecnoweb.org.bo` (pasa en muchas conexiones domésticas), las respuestas salen
+por Gmail (`smtp.gmail.com:587`, `starttls`, con una contraseña de aplicación).
+
+```bash
+java -jar target/portal-correo.jar --config config.properties --instalar-bd    # crea las tablas en proyecto1
+java -jar target/portal-correo.jar --config config.properties --probar-correo  # prueba POP3 y SMTP
+java -jar target/portal-correo.jar --config config.properties                  # inicia el servicio
+```
+
 ## Logs
 
 - `logs/access.log`: cada correo procesado, el comando, el resultado (ÉXITO/ERROR) y el tiempo.
