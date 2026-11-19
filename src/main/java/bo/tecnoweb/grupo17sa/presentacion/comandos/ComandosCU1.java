@@ -11,6 +11,8 @@ import bo.tecnoweb.grupo17sa.presentacion.vista.TablaHTML;
 
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 import static bo.tecnoweb.grupo17sa.presentacion.comandos.DefinicionComando.privado;
 import static bo.tecnoweb.grupo17sa.presentacion.comandos.DefinicionComando.publico;
@@ -19,32 +21,31 @@ import static bo.tecnoweb.grupo17sa.presentacion.comandos.Parametro.correo;
 import static bo.tecnoweb.grupo17sa.presentacion.comandos.Parametro.entero;
 import static bo.tecnoweb.grupo17sa.presentacion.comandos.Parametro.filtro;
 import static bo.tecnoweb.grupo17sa.presentacion.comandos.Parametro.texto;
-import static bo.tecnoweb.grupo17sa.presentacion.comandos.Parametro.textoOpcional;
 import static bo.tecnoweb.grupo17sa.presentacion.comandos.Respuestas.eliminado;
 import static bo.tecnoweb.grupo17sa.presentacion.comandos.Respuestas.fecha;
 import static bo.tecnoweb.grupo17sa.presentacion.comandos.Respuestas.insertado;
 import static bo.tecnoweb.grupo17sa.presentacion.comandos.Respuestas.listado;
 import static bo.tecnoweb.grupo17sa.presentacion.comandos.Respuestas.modificado;
 
-/** CU1 Gestión de Usuarios, roles y permisos (RF-18). */
+/** CU1 Gestión de Usuarios (RF-18). Los roles son fijos: aquí solo se consultan, no se crean ni se modifican. */
 public class ComandosCU1 implements ModuloComandos {
 
-    private static final String AYUDA_CASOS = "casos_de_uso: CU1 a CU8 separados por comas (CU2,CU4) o * para todos";
+    private static final String ROLES = "rol: ADMINISTRADOR, EDITOR_INSTITUCIONAL o EDITOR_COMUNICACION";
+
+    /** Lo que se muestra del Visitante: no es un rol de la base, es cualquier correo sin usuario activo. */
+    private static final String VISITANTE = "Cualquier correo sin usuario activo, sin registrarse: solo los comandos"
+            + " públicos (portal, consultas, contacto, búsqueda, solicitudes a INNOVA y Alumni).";
 
     private static final List<DefinicionComando> COMANDOS = List.of(
             privado("LISUSU", "Lista los usuarios: \"*\" (todos) o un correo, nombre o rol", filtro()),
-            privado("INSUSU", "Registra un usuario; el rol es uno de LISROL", correo("correo", 120), texto("nombre", 150),
+            privado("INSUSU", "Registra un usuario. " + ROLES, correo("correo", 120), texto("nombre", 150),
                     texto("rol", 40)),
-            privado("MODUSU", "Modifica el nombre, el rol y el estado de un usuario (activo: SI o NO)",
+            privado("MODUSU", "Modifica el nombre, el rol y el estado de un usuario (activo: SI o NO). " + ROLES,
                     entero("id"), texto("nombre", 150), texto("rol", 40), booleano("activo")),
             privado("ELIUSU", "Elimina un usuario", entero("id")),
-            privado("LISROL", "Lista los roles con sus casos de uso y su cantidad de usuarios", filtro()),
-            privado("INSROL", "Registra un rol. " + AYUDA_CASOS, texto("nombre", 40), textoOpcional("descripcion", 200),
-                    texto("casos_de_uso", 60)),
-            privado("MODROL", "Modifica un rol. " + AYUDA_CASOS, entero("id"), texto("nombre", 40),
-                    textoOpcional("descripcion", 200), texto("casos_de_uso", 60)),
-            privado("ELIROL", "Elimina un rol que no tenga usuarios", entero("id")),
-            publico("MISROL", "Muestra su usuario, su rol y los casos de uso que puede administrar")
+            privado("LISROL", "Lista los roles fijos del sistema, lo que gestiona cada uno y su cantidad de usuarios",
+                    filtro()),
+            publico("MISROL", "Muestra su usuario, su rol y lo que puede gestionar")
     );
 
     private final UsuariosNegocio usuarios = new UsuariosNegocio();
@@ -71,22 +72,15 @@ public class ComandosCU1 implements ModuloComandos {
                 return listado("Usuarios", tablaUsuarios(usuarios.listarUsuarios(c.parametro(0))));
             case "INSUSU":
                 return insertado("usuario", usuarios.insertarUsuario(usuario, c.parametro(0), c.parametro(1), c.parametro(2)))
-                        .agregar(new Parrafo("Acceso", "Desde ahora " + c.parametro(0).trim().toLowerCase()
-                                + " puede usar los comandos de su rol. Con MISROL ve lo que puede administrar."));
+                        .agregar(new Parrafo("Acceso", "Desde ahora " + c.parametro(0).trim().toLowerCase(Locale.ROOT)
+                                + " puede usar los comandos de su rol. Con MISROL ve lo que puede gestionar."));
             case "MODUSU":
                 usuarios.modificarUsuario(usuario, c.entero(0), c.parametro(1), c.parametro(2), c.booleano(3));
                 return modificado("usuario", c.entero(0));
             case "ELIUSU":
                 return eliminado("usuario", c.entero(0), usuarios.eliminarUsuario(usuario, c.entero(0)).correo());
             case "LISROL":
-                return listado("Roles", tablaRoles(usuarios.listarRoles(c.parametro(0))));
-            case "INSROL":
-                return insertado("rol", usuarios.insertarRol(usuario, c.parametro(0), c.texto(1), c.parametro(2)));
-            case "MODROL":
-                usuarios.modificarRol(usuario, c.entero(0), c.parametro(1), c.texto(2), c.parametro(3));
-                return modificado("rol", c.entero(0));
-            case "ELIROL":
-                return eliminado("rol", c.entero(0), usuarios.eliminarRol(usuario, c.entero(0)).nombre());
+                return listado("Roles", tablaRoles(usuarios.listarRoles(), c.parametro(0)));
             case "MISROL":
                 return miCuenta(usuarios.miCuenta(usuario));
             default:
@@ -95,41 +89,57 @@ public class ComandosCU1 implements ModuloComandos {
     }
 
     private static Respuesta miCuenta(UsuariosNegocio.MiCuenta cuenta) {
-        if (cuenta.usuario() == null) {
+        Usuario u = cuenta.usuario();
+        if (u == null) {
             String mensaje = cuenta.administradorArranque()
-                    ? "Su correo es administrador de arranque (config.properties): puede usar todos los comandos."
-                    + " Registre los usuarios con INSUSU."
-                    : "El correo " + cuenta.correo() + " no está registrado como usuario: puede usar los comandos públicos."
-                    + " Envíe HELP para verlos.";
+                    ? "Su correo es administrador de arranque (config.properties): tiene los permisos del rol"
+                    + " Administrador. Registre los usuarios con INSUSU."
+                    : "El correo " + cuenta.correo() + " no está registrado como usuario: es Visitante y puede usar"
+                    + " los comandos públicos. Envíe HELP para verlos.";
             return Respuesta.exito("Su cuenta", mensaje);
         }
-        Usuario u = cuenta.usuario();
-        Rol rol = cuenta.rol();
-        String casos = rol == null || rol.modulos().isEmpty() ? "ninguno"
-                : rol.modulos().contains(UsuariosNegocio.TODOS) ? "todos" : String.join(", ", rol.modulos());
         TablaHTML t = new TablaHTML("Su usuario", "Dato", "Valor").sinCantidad()
                 .fila("Nombre", u.nombre())
                 .fila("Correo", u.correo())
-                .fila("Rol", u.rol())
-                .fila("Casos de uso que administra", casos)
-                .fila("Estado", u.activo() ? "Activo" : "Inactivo (solo comandos públicos)");
+                .fila("Rol", u.rol().nombre() + " (" + u.rol().name() + ")")
+                .fila("Qué gestiona", u.rol().gestiona())
+                .fila("Estado", u.activo() ? "Activo" : "Inactivo: mientras tanto es Visitante (solo comandos públicos)");
         return Respuesta.exito("Su cuenta", "Datos de su usuario en el sistema.").agregar(t);
     }
 
     private static TablaHTML tablaUsuarios(List<Usuario> lista) {
         TablaHTML t = new TablaHTML("Usuarios", "ID", "Correo", "Nombre", "Rol", "Activo", "Registrado");
         for (Usuario u : lista) {
-            t.fila(u.id(), u.correo(), u.nombre(), u.rol(), u.activo() ? "Sí" : "No", fecha(u.creado()));
+            t.fila(u.id(), u.correo(), u.nombre(), u.rol().name(), u.activo() ? "Sí" : "No", fecha(u.creado()));
         }
         return t;
     }
 
-    private static TablaHTML tablaRoles(List<Rol> lista) {
-        TablaHTML t = new TablaHTML("Roles", "ID", "Rol", "Descripción", "Casos de uso", "Usuarios");
-        for (Rol r : lista) {
-            String casos = r.modulos().contains(UsuariosNegocio.TODOS) ? "Todos (*)" : String.join(", ", r.modulos());
-            t.fila(r.id(), r.nombre(), r.descripcion(), casos, r.usuarios());
+    /** Los tres roles fijos y, al final, el Visitante. El filtro busca en el rol, su nombre y lo que gestiona. */
+    private static TablaHTML tablaRoles(Map<Rol, Integer> roles, String filtro) {
+        TablaHTML t = new TablaHTML("Roles", "Rol", "Nombre", "Qué gestiona", "Usuarios");
+        for (Map.Entry<Rol, Integer> e : roles.entrySet()) {
+            Rol r = e.getKey();
+            if (coincide(filtro, r.name(), r.nombre(), r.gestiona())) {
+                t.fila(r.name(), r.nombre(), r.gestiona(), e.getValue());
+            }
+        }
+        if (coincide(filtro, "VISITANTE", "Visitante", VISITANTE)) {
+            t.fila("VISITANTE", "Visitante", VISITANTE, "-");
         }
         return t;
+    }
+
+    private static boolean coincide(String filtro, String... textos) {
+        if (filtro == null || filtro.isBlank() || filtro.trim().equals("*")) {
+            return true;
+        }
+        String buscado = filtro.trim().toLowerCase(Locale.ROOT);
+        for (String texto : textos) {
+            if (texto.toLowerCase(Locale.ROOT).contains(buscado)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

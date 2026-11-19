@@ -73,14 +73,14 @@ public class ComandosCU6 implements ModuloComandos {
 
     private static final List<DefinicionComando> COMANDOS = List.of(
             // Noticias (RF-07)
-            publico("LISNOT", "Lista las noticias publicadas (administradores ven todas)", filtro()),
+            publico("LISNOT", "Lista las noticias publicadas (quien gestiona el CU6 ve también las no publicadas)", filtro()),
             publico("VERNOT", "Muestra el detalle completo de una noticia", entero("id")),
             privado("INSNOT", "Registra una nueva noticia", NOTICIA),
             privado("MODNOT", "Modifica una noticia existente", conId(NOTICIA)),
             privado("ELINOT", "Elimina una noticia", entero("id")),
 
             // Comunicados (RF-08)
-            publico("LISCOM", "Lista los comunicados y avisos vigentes (administradores ven todos)", filtro()),
+            publico("LISCOM", "Lista los comunicados y avisos vigentes (quien gestiona el CU6 ve también los vencidos)", filtro()),
             privado("INSCOM", "Registra un comunicado o aviso oficial", COMUNICADO),
             privado("MODCOM", "Modifica un comunicado existente", conId(COMUNICADO)),
             privado("ELICOM", "Elimina un comunicado", entero("id")),

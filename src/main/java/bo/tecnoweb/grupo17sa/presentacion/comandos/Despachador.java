@@ -1,6 +1,7 @@
 package bo.tecnoweb.grupo17sa.presentacion.comandos;
 
 import bo.tecnoweb.grupo17sa.Registro;
+import bo.tecnoweb.grupo17sa.modelo.Rol;
 import bo.tecnoweb.grupo17sa.negocio.AccesoNegocio;
 import bo.tecnoweb.grupo17sa.negocio.ErrorNegocio;
 import bo.tecnoweb.grupo17sa.presentacion.lexico.AnalizadorLexico;
@@ -21,11 +22,14 @@ import java.util.Map;
  *  1. Análisis léxico del asunto (AnalizadorLexico).
  *  2. Busca el comando en los módulos de cada caso de uso.
  *  3. Valida la cantidad exacta de parámetros y el tipo de cada uno.
- *  4. Verifica el permiso del remitente si el comando no es público.
+ *  4. Si el comando no es público, verifica que el rol fijo del remitente lo permita (Rol.puede).
  *  5. Ejecuta el comando; los errores de negocio y de PostgreSQL se responden como "Error: ...".
  * Cada correo procesado queda en logs/access.log y cada excepción en logs/error.log.
  */
 public class Despachador {
+
+    /** Lo que muestra HELP en la columna Acceso para los comandos que no piden usuario. */
+    public static final String PUBLICO = "Visitante (público)";
 
     private final AnalizadorLexico analizador = new AnalizadorLexico();
     private final AccesoNegocio acceso = new AccesoNegocio();
@@ -95,7 +99,8 @@ public class Despachador {
             }
             if (!definicion.esPublico() && !acceso.tienePermiso(remitente, modulo.codigo(), definicion.nombre())) {
                 return Respuesta.error("Permiso denegado", "El correo " + remitente + " no tiene permiso para usar "
-                        + definicion.nombre() + " (" + modulo.codigo() + " " + modulo.nombre() + ").");
+                        + definicion.nombre() + " (" + modulo.codigo() + " " + modulo.nombre() + "). Roles que pueden usarlo: "
+                        + Rol.nombres(Rol.quePueden(modulo.codigo(), definicion.nombre())) + ".");
             }
             try {
                 return modulo.ejecutar(comando, remitente);
@@ -153,7 +158,8 @@ public class Despachador {
             }
             TablaHTML tabla = new TablaHTML(modulo.codigo() + " - " + modulo.nombre(), "Comando", "Descripción", "Acceso");
             for (DefinicionComando d : modulo.comandos()) {
-                tabla.fila(d.sintaxis(), d.descripcionCompleta(), d.esPublico() ? "Público" : "Con permiso");
+                tabla.fila(d.sintaxis(), d.descripcionCompleta(), d.esPublico() ? PUBLICO
+                        : Rol.nombres(Rol.quePueden(modulo.codigo(), d.nombre())));
             }
             respuesta.agregar(tabla);
         }

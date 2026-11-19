@@ -22,7 +22,6 @@ public class ReporteDAO {
     /** Tablas del resumen general: caso de uso, nombre a mostrar y tabla. Cada integrante agrega las suyas. */
     public static final String[][] TABLAS_RESUMEN = {
             {"CU1", "Usuarios", "usuario"},
-            {"CU1", "Roles", "rol"},
             {"CU2", "Banners", "banner"},
             {"CU2", "Contenidos destacados", "destacado"},
             {"CU2", "Accesos rápidos", "acceso_rapido"},

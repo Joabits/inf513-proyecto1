@@ -1,5 +1,6 @@
 package bo.tecnoweb.grupo17sa.datos;
 
+import bo.tecnoweb.grupo17sa.modelo.Rol;
 import bo.tecnoweb.grupo17sa.modelo.Usuario;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -7,18 +8,22 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 
-/** Acceso a la tabla usuario (RF-18). El correo es único y se guarda en minúsculas. */
+/**
+ * Acceso a la tabla usuario (RF-18). El correo es único y se guarda en minúsculas; la columna rol guarda el nombre de
+ * uno de los tres roles fijos (ADMINISTRADOR, EDITOR_INSTITUCIONAL o EDITOR_COMUNICACION).
+ */
 public class UsuarioDAO {
 
-    private static final String CONSULTA = "SELECT u.id, u.correo, u.nombre, u.rol_id, r.nombre AS rol, u.activo, u.creado"
-            + " FROM usuario u JOIN rol r ON r.id = u.rol_id";
+    private static final String CONSULTA = "SELECT id, correo, nombre, rol, activo, creado FROM usuario";
 
     public List<Usuario> listar(Connection con, String filtro) throws SQLException {
         boolean todos = Filtro.todos(filtro);
-        String sql = CONSULTA + (todos ? "" : " WHERE u.correo ILIKE ? OR u.nombre ILIKE ? OR r.nombre ILIKE ?")
-                + " ORDER BY u.activo DESC, u.nombre";
+        String sql = CONSULTA + (todos ? "" : " WHERE correo ILIKE ? OR nombre ILIKE ? OR rol ILIKE ?")
+                + " ORDER BY activo DESC, nombre";
         try (PreparedStatement ps = con.prepareStatement(sql)) {
             if (!todos) {
                 for (int i = 1; i <= 3; i++) {
@@ -36,7 +41,7 @@ public class UsuarioDAO {
     }
 
     public Usuario buscar(Connection con, int id) throws SQLException {
-        try (PreparedStatement ps = con.prepareStatement(CONSULTA + " WHERE u.id = ?")) {
+        try (PreparedStatement ps = con.prepareStatement(CONSULTA + " WHERE id = ?")) {
             ps.setInt(1, id);
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? leer(rs) : null;
@@ -45,7 +50,7 @@ public class UsuarioDAO {
     }
 
     public Usuario buscarPorCorreo(Connection con, String correo) throws SQLException {
-        try (PreparedStatement ps = con.prepareStatement(CONSULTA + " WHERE u.correo = ?")) {
+        try (PreparedStatement ps = con.prepareStatement(CONSULTA + " WHERE correo = ?")) {
             ps.setString(1, correo);
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? leer(rs) : null;
@@ -53,12 +58,12 @@ public class UsuarioDAO {
         }
     }
 
-    public int insertar(Connection con, String correo, String nombre, int rolId) throws SQLException {
-        String sql = "INSERT INTO usuario (correo, nombre, rol_id) VALUES (?, ?, ?) RETURNING id";
+    public int insertar(Connection con, String correo, String nombre, Rol rol) throws SQLException {
+        String sql = "INSERT INTO usuario (correo, nombre, rol) VALUES (?, ?, ?) RETURNING id";
         try (PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, correo);
             ps.setString(2, nombre);
-            ps.setInt(3, rolId);
+            ps.setString(3, rol.name());
             try (ResultSet rs = ps.executeQuery()) {
                 rs.next();
                 return rs.getInt(1);
@@ -66,11 +71,11 @@ public class UsuarioDAO {
         }
     }
 
-    public boolean modificar(Connection con, int id, String nombre, int rolId, boolean activo) throws SQLException {
-        String sql = "UPDATE usuario SET nombre = ?, rol_id = ?, activo = ?, actualizado = now() WHERE id = ?";
+    public boolean modificar(Connection con, int id, String nombre, Rol rol, boolean activo) throws SQLException {
+        String sql = "UPDATE usuario SET nombre = ?, rol = ?, activo = ?, actualizado = now() WHERE id = ?";
         try (PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, nombre);
-            ps.setInt(2, rolId);
+            ps.setString(2, rol.name());
             ps.setBoolean(3, activo);
             ps.setInt(4, id);
             return ps.executeUpdate() > 0;
@@ -84,25 +89,15 @@ public class UsuarioDAO {
         }
     }
 
-    /** ¿El correo es de un usuario activo cuyo rol tiene el caso de uso (o '*')? */
-    public boolean tienePermiso(Connection con, String correo, String modulo) throws SQLException {
-        String sql = "SELECT 1 FROM usuario u JOIN rol_modulo m ON m.rol_id = u.rol_id"
-                + " WHERE u.correo = ? AND u.activo AND (m.modulo = '*' OR m.modulo = ?)";
-        try (PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setString(1, correo);
-            ps.setString(2, modulo);
-            try (ResultSet rs = ps.executeQuery()) {
-                return rs.next();
-            }
+    /** Correos de los usuarios activos que tienen alguno de los roles indicados (para los avisos por correo). */
+    public List<String> correosConRol(Connection con, List<Rol> roles) throws SQLException {
+        String[] nombres = new String[roles.size()];
+        for (int i = 0; i < roles.size(); i++) {
+            nombres[i] = roles.get(i).name();
         }
-    }
-
-    /** Correos de los usuarios activos que administran el caso de uso (su rol lo tiene o tiene '*'). */
-    public List<String> correosConPermiso(Connection con, String modulo) throws SQLException {
-        String sql = "SELECT DISTINCT u.correo FROM usuario u JOIN rol_modulo m ON m.rol_id = u.rol_id"
-                + " WHERE u.activo AND (m.modulo = '*' OR m.modulo = ?) ORDER BY u.correo";
+        String sql = "SELECT correo FROM usuario WHERE activo AND rol = ANY (?) ORDER BY correo";
         try (PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setString(1, modulo);
+            ps.setArray(1, con.createArrayOf("varchar", nombres));
             try (ResultSet rs = ps.executeQuery()) {
                 List<String> correos = new ArrayList<>();
                 while (rs.next()) {
@@ -113,12 +108,27 @@ public class UsuarioDAO {
         }
     }
 
-    /** Usuarios activos con acceso total ('*'), sin contar al indicado. */
+    /** Cantidad de usuarios de cada rol (los roles sin usuarios quedan con 0). */
+    public Map<Rol, Integer> contarPorRol(Connection con) throws SQLException {
+        Map<Rol, Integer> cantidades = new EnumMap<>(Rol.class);
+        for (Rol rol : Rol.values()) {
+            cantidades.put(rol, 0);
+        }
+        try (PreparedStatement ps = con.prepareStatement("SELECT rol, count(*) FROM usuario GROUP BY rol");
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                cantidades.put(Rol.valueOf(rs.getString(1)), rs.getInt(2));
+            }
+        }
+        return cantidades;
+    }
+
+    /** Administradores activos, sin contar al indicado. */
     public int contarAdministradoresActivos(Connection con, int excluirId) throws SQLException {
-        String sql = "SELECT count(DISTINCT u.id) FROM usuario u JOIN rol_modulo m ON m.rol_id = u.rol_id"
-                + " WHERE u.activo AND m.modulo = '*' AND u.id <> ?";
+        String sql = "SELECT count(*) FROM usuario WHERE activo AND rol = ? AND id <> ?";
         try (PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setInt(1, excluirId);
+            ps.setString(1, Rol.ADMINISTRADOR.name());
+            ps.setInt(2, excluirId);
             try (ResultSet rs = ps.executeQuery()) {
                 rs.next();
                 return rs.getInt(1);
@@ -128,7 +138,7 @@ public class UsuarioDAO {
 
     private static Usuario leer(ResultSet rs) throws SQLException {
         Timestamp creado = rs.getTimestamp("creado");
-        return new Usuario(rs.getInt("id"), rs.getString("correo"), rs.getString("nombre"), rs.getInt("rol_id"),
-                rs.getString("rol"), rs.getBoolean("activo"), creado == null ? null : creado.toLocalDateTime());
+        return new Usuario(rs.getInt("id"), rs.getString("correo"), rs.getString("nombre"),
+                Rol.valueOf(rs.getString("rol")), rs.getBoolean("activo"), creado == null ? null : creado.toLocalDateTime());
     }
 }

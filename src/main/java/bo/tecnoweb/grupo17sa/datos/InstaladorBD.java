@@ -56,17 +56,24 @@ public final class InstaladorBD {
         }
     }
 
-    /** Separa el script en sentencias: cada una termina con ';' al final de una línea. Ignora los comentarios "--". */
+    /**
+     * Separa el script en sentencias: cada una termina con ';' al final de una línea. Ignora los comentarios "--".
+     * Un bloque DO $$ ... $$; es una sola sentencia aunque tenga ';' adentro.
+     */
     public static List<String> dividir(String script) {
         List<String> sentencias = new ArrayList<>();
         StringBuilder actual = new StringBuilder();
+        boolean enBloque = false;
         for (String linea : script.split("\\R")) {
             String limpia = linea.strip();
             if (limpia.isEmpty() || limpia.startsWith("--")) {
                 continue;
             }
             actual.append(linea).append('\n');
-            if (limpia.endsWith(";")) {
+            if (limpia.split("\\$\\$", -1).length % 2 == 0) {
+                enBloque = !enBloque;
+            }
+            if (!enBloque && limpia.endsWith(";")) {
                 String sentencia = actual.toString().strip();
                 sentencias.add(sentencia.substring(0, sentencia.length() - 1));
                 actual.setLength(0);

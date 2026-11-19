@@ -9,7 +9,7 @@ import java.util.List;
 
 /**
  * RF-11 Registro y seguimiento de graduados (Alumni). Cada graduado se registra y actualiza sus datos
- * desde su propio correo; el administrador consulta, filtra y exporta la información.
+ * desde su propio correo; el Editor institucional y el Administrador consultan, filtran y exportan la información.
  */
 public class AlumniNegocio {
 

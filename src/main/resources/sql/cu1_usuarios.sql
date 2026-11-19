@@ -1,54 +1,48 @@
 -- =====================================================================
--- CU1 Gestión de Usuarios, roles y permisos (RF-18)
+-- CU1 Gestión de Usuarios (RF-18)
 -- Se puede ejecutar varias veces: crea lo que falta y no duplica datos.
--- Un correo tiene permiso sobre un caso de uso si es un usuario activo y su rol
--- tiene ese caso de uso (o '*', todos). Los correos de admin.correos (config.properties)
--- son administradores de arranque: sirven para crear el primer usuario.
+-- Los roles son fijos (no se crean ni se modifican por correo) y lo que gestiona cada uno está en la clase Rol:
+--   ADMINISTRADOR         Director de Carrera: gestiona todo
+--   EDITOR_INSTITUCIONAL  oferta académica, malla, docentes, investigación, documentos, revista INNOVAR,
+--                         vinculación, INNOVA, Alumni, mensajes de contacto y accesos rápidos
+--   EDITOR_COMUNICACION   noticias, comunicados, eventos, galería y banners
+-- Quien no tiene usuario activo es Visitante: solo usa los comandos públicos.
+-- Los correos de admin.correos (config.properties) son administradores de arranque: sirven para crear el primer usuario.
 -- =====================================================================
-
--- Roles del sistema (el nombre se guarda en mayúsculas, por ejemplo EDITOR_INSTITUCIONAL)
-CREATE TABLE IF NOT EXISTS rol (
-    id          SERIAL       PRIMARY KEY,
-    nombre      VARCHAR(40)  NOT NULL UNIQUE CHECK (nombre = upper(nombre)),
-    descripcion VARCHAR(200),
-    creado      TIMESTAMP    NOT NULL DEFAULT now()
-);
-
--- Casos de uso que puede administrar cada rol ('*' = todos)
-CREATE TABLE IF NOT EXISTS rol_modulo (
-    rol_id      INTEGER      NOT NULL REFERENCES rol (id) ON DELETE CASCADE,
-    modulo      VARCHAR(5)   NOT NULL CHECK (modulo IN ('*', 'CU1', 'CU2', 'CU3', 'CU4', 'CU5', 'CU6', 'CU7', 'CU8')),
-    PRIMARY KEY (rol_id, modulo)
-);
 
 -- Usuarios: se identifican por el correo desde el que envían los comandos
 CREATE TABLE IF NOT EXISTS usuario (
     id          SERIAL       PRIMARY KEY,
     correo      VARCHAR(120) NOT NULL UNIQUE CHECK (correo = lower(correo)),
     nombre      VARCHAR(150) NOT NULL,
-    rol_id      INTEGER      NOT NULL REFERENCES rol (id) ON DELETE RESTRICT,
+    rol         VARCHAR(30)  NOT NULL CHECK (rol IN ('ADMINISTRADOR', 'EDITOR_INSTITUCIONAL', 'EDITOR_COMUNICACION')),
     activo      BOOLEAN      NOT NULL DEFAULT TRUE,
     creado      TIMESTAMP    NOT NULL DEFAULT now(),
     actualizado TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS usuario_rol_idx ON usuario (rol_id);
-
 -- ---------------------------------------------------------------------
--- Roles iniciales (se cambian con MODROL; los usuarios se crean con INSUSU)
+-- Bases instaladas con la versión anterior (roles dinámicos en las tablas rol y rol_modulo):
+-- cada usuario conserva su rol si es uno de los tres fijos. Los de otro rol (por ejemplo CONSULTOR)
+-- quedan como EDITOR_INSTITUCIONAL inactivos hasta que el administrador les asigne un rol con MODUSU.
 -- ---------------------------------------------------------------------
-INSERT INTO rol (nombre, descripcion) VALUES
-('ADMINISTRADOR', 'Director de Carrera: administra todos los casos de uso'),
-('EDITOR_INSTITUCIONAL', 'Portal, investigación, revista, documentos y vinculación'),
-('EDITOR_COMUNICACION', 'Atiende los mensajes de contacto'),
-('CONSULTOR', 'Consulta los reportes y estadísticas')
-ON CONFLICT (nombre) DO NOTHING;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns
+               WHERE table_schema = current_schema() AND table_name = 'usuario' AND column_name = 'rol_id') THEN
+        ALTER TABLE usuario ADD COLUMN rol VARCHAR(30);
+        UPDATE usuario u SET rol = r.nombre FROM rol r WHERE r.id = u.rol_id;
+        UPDATE usuario SET rol = 'EDITOR_INSTITUCIONAL', activo = FALSE, actualizado = now()
+        WHERE rol IS NULL OR rol NOT IN ('ADMINISTRADOR', 'EDITOR_INSTITUCIONAL', 'EDITOR_COMUNICACION');
+        ALTER TABLE usuario ALTER COLUMN rol SET NOT NULL;
+        ALTER TABLE usuario ADD CHECK (rol IN ('ADMINISTRADOR', 'EDITOR_INSTITUCIONAL', 'EDITOR_COMUNICACION'));
+        ALTER TABLE usuario DROP COLUMN rol_id;
+    END IF;
+END
+$$;
 
-INSERT INTO rol_modulo (rol_id, modulo)
-SELECT r.id, m.modulo
-FROM rol r
-JOIN (VALUES ('ADMINISTRADOR', '*'),
-             ('EDITOR_INSTITUCIONAL', 'CU2'), ('EDITOR_INSTITUCIONAL', 'CU4'), ('EDITOR_INSTITUCIONAL', 'CU5'),
-             ('EDITOR_COMUNICACION', 'CU7'),
-             ('CONSULTOR', 'CU8')) AS m (rol, modulo) ON m.rol = r.nombre
-ON CONFLICT DO NOTHING;
+DROP TABLE IF EXISTS rol_modulo;
+
+DROP TABLE IF EXISTS rol;
+
+CREATE INDEX IF NOT EXISTS usuario_rol_idx ON usuario (rol);

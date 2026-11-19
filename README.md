@@ -68,7 +68,7 @@ flowchart TD
     F -- No --> G[Error: Comando desconocido]
     F -- Sí --> H{¿Cantidad y tipos correctos?}
     H -- No --> I[Error: Parámetros incorrectos]
-    H -- Sí --> J{¿Es público o el remitente tiene permiso?}
+    H -- Sí --> J{¿Es público o el rol del remitente lo permite?}
     J -- No --> K[Error: Permiso denegado]
     J -- Sí --> L[Negocio y DAO: transacción con PreparedStatement]
     L -- Error de negocio o de SQL --> M[Error con el detalle del fallo]
@@ -92,15 +92,16 @@ registro por última vez. Así ninguna tabla queda suelta en el modelo: todas se
 - Cada script tiene `ALTER TABLE ... ADD COLUMN IF NOT EXISTS usuario_id ...`, así `--instalar-bd` también agrega la
   columna a una base instalada antes.
 
-### CU1 Gestión de Usuarios, roles y permisos (`cu1_usuarios.sql`)
+### CU1 Gestión de Usuarios (`cu1_usuarios.sql`)
 
 | Tabla | Columnas | Uso |
 |-------|----------|-----|
-| `rol` | **id**, nombre (único, en mayúsculas), descripcion, creado | Roles del sistema (RF-18) |
-| `rol_modulo` | **rol_id**, **modulo** | Casos de uso que administra cada rol: `CU1` a `CU8`, o `*` para todos (RF-18) |
-| `usuario` | **id**, correo (único, en minúsculas), nombre, rol_id, activo, creado, actualizado | Usuarios: se identifican por el correo desde el que envían los comandos (RF-18) |
+| `usuario` | **id**, correo (único, en minúsculas), nombre, rol, activo, creado, actualizado | Usuarios: se identifican por el correo desde el que envían los comandos; `rol` es uno de los tres roles fijos (`CHECK`) (RF-18) |
 
-Roles iniciales: `ADMINISTRADOR` (`*`), `EDITOR_INSTITUCIONAL` (CU2, CU4, CU5), `EDITOR_COMUNICACION` (CU7) y `CONSULTOR` (CU8).
+Los roles son **fijos**: no hay tablas de roles ni comandos para crearlos o modificarlos (ver [Roles y permisos](#roles-y-permisos-cu1)).
+Una base instalada con la versión anterior (roles dinámicos en las tablas `rol` y `rol_modulo`) se migra sola con
+`--instalar-bd`: cada usuario conserva su rol si es uno de los tres; los de otro rol (por ejemplo `CONSULTOR`) quedan
+inactivos como `EDITOR_INSTITUCIONAL` hasta que el administrador les asigne uno con `MODUSU`.
 
 ### CU2 Portal Web y Bitácora de Auditoría (`cu2_portal.sql`)
 
@@ -152,27 +153,41 @@ publicado de los demás casos de uso (`BusquedaDAO.FUENTES`).
 
 ## Comandos implementados
 
-### Permisos (CU1)
+### Roles y permisos (CU1)
 
-Un comando «Con permiso» lo puede usar un usuario **activo** cuyo rol tiene ese caso de uso (o `*`). Los correos de
-`admin.correos` en `config.properties` son **administradores de arranque**: tienen permiso aunque no estén en la base y
-sirven para registrar el primer usuario. Nadie puede desactivarse ni eliminarse a sí mismo, y el sistema no permite
-quedarse sin un administrador activo cuando no hay administradores de arranque.
+Hay tres roles **fijos**. Lo que puede hacer cada uno está definido en un solo lugar, la enumeración `modelo.Rol`
+(`Rol.puede(modulo, comando)`); no se crean ni se modifican por correo.
 
-### CU1 Gestión de Usuarios, roles y permisos
+| Rol | Quién | Qué gestiona |
+|-----|-------|--------------|
+| `ADMINISTRADOR` | Director de Carrera | Todo: usuarios (CU1); páginas institucionales (historia, misión, visión), datos de contacto, redes sociales, contenidos destacados y bitácora (CU2); reportes (CU8); y todo lo de los editores |
+| `EDITOR_INSTITUCIONAL` | Personal designado por la Dirección | Oferta académica, malla, titulación, autoridades y personal (CU3); investigación, documentos descargables y revista INNOVAR (CU4); vinculación, INNOVA y Alumni (CU5); mensajes de contacto (CU7); enlaces de acceso rápido (CU2) |
+| `EDITOR_COMUNICACION` | Responsable de comunicación | Noticias, comunicados, eventos y galería (CU6); banners del carrusel (CU2) |
+| Visitante | Cualquier persona, sin registrarse | Solo los comandos públicos. No es un usuario de la base: es todo correo sin usuario activo |
+
+Los procesos automáticos los hace el **Sistema** (`HiloCiclico`): revisa el buzón, responde cada correo y envía los
+avisos de `ENVMSJ`, `RESMSJ` y `ATESOL`.
+
+En las tablas de comandos, la columna Acceso dice qué rol puede usar cada comando; el Administrador puede usarlos todos.
+`HELP` muestra lo mismo y «Permiso denegado» dice qué roles pueden usar el comando. Los correos de `admin.correos` en
+`config.properties` son **administradores de arranque**: actúan como Administrador aunque no estén en la base y sirven
+para registrar el primer usuario. Nadie puede desactivarse, cambiarse el rol ni eliminarse a sí mismo, y el sistema no
+permite quedarse sin un administrador activo cuando no hay administradores de arranque.
+
+### CU1 Gestión de Usuarios
 
 | Comando | Acceso | Descripción |
 |---------|--------|-------------|
-| `LISUSU["*"]` · `INSUSU["correo","nombre","rol"]` · `MODUSU["id","nombre","rol","activo"]` · `ELIUSU["id"]` | Con permiso | Usuarios (activo: SI o NO) |
-| `LISROL["*"]` · `INSROL["nombre","descripcion","casos_de_uso"]` · `MODROL["id",...]` · `ELIROL["id"]` | Con permiso | Roles; casos_de_uso: `CU2,CU4` o `*`. El rol ADMINISTRADOR no se borra ni pierde el `*` |
-| `MISROL` | Público | Usuario, rol y casos de uso del remitente |
+| `LISUSU["*"]` · `INSUSU["correo","nombre","rol"]` · `MODUSU["id","nombre","rol","activo"]` · `ELIUSU["id"]` | Administrador | Usuarios. rol: `ADMINISTRADOR`, `EDITOR_INSTITUCIONAL` o `EDITOR_COMUNICACION` (también se acepta «editor de comunicación»); activo: SI o NO |
+| `LISROL["*"]` | Administrador | Los tres roles fijos, qué gestiona cada uno y cuántos usuarios tiene |
+| `MISROL` | Público | Usuario, rol y lo que puede gestionar el remitente (o que es Visitante) |
 
 Ejemplos:
 
 ```
 INSUSU["director@ejemplo.edu.bo","Director de Carrera","ADMINISTRADOR"]
-INSROL["editor de prensa","Noticias y mensajes","CU2, CU7"]
-MODUSU["2","Editora Institucional","CONSULTOR","SI"]
+INSUSU["prensa@ejemplo.edu.bo","Responsable de Comunicación","editor de comunicación"]
+MODUSU["2","Editora Institucional","EDITOR_INSTITUCIONAL","NO"]
 ```
 
 ### CU2 Portal Web y Bitácora de Auditoría
@@ -180,15 +195,15 @@ MODUSU["2","Editora Institucional","CONSULTOR","SI"]
 | Comando | Acceso | Descripción |
 |---------|--------|-------------|
 | `INICIO` | Público | Bienvenida, banners, contenidos destacados y accesos rápidos |
-| `LISBAN["*"]` · `INSBAN["titulo","subtitulo","imagen_url","enlace","orden"]` · `MODBAN["id",...]` · `ELIBAN["id"]` | Con permiso | Banners del carrusel |
-| `LISDES["*"]` · `INSDES["titulo","descripcion","enlace","orden"]` · `MODDES["id",...]` · `ELIDES["id"]` | Con permiso | Contenidos destacados |
-| `LISACC["*"]` · `INSACC["nombre","url","descripcion","orden"]` · `MODACC["id",...]` · `ELIACC["id"]` | Con permiso | Accesos rápidos |
+| `LISBAN["*"]` · `INSBAN["titulo","subtitulo","imagen_url","enlace","orden"]` · `MODBAN["id",...]` · `ELIBAN["id"]` | Editor de comunicación | Banners del carrusel |
+| `LISDES["*"]` · `INSDES["titulo","descripcion","enlace","orden"]` · `MODDES["id",...]` · `ELIDES["id"]` | Administrador | Contenidos destacados |
+| `LISACC["*"]` · `INSACC["nombre","url","descripcion","orden"]` · `MODACC["id",...]` · `ELIACC["id"]` | Editor institucional | Accesos rápidos |
 | `LISINT["*"]` · `VERINT["mision"]` | Público | Información institucional |
-| `MODINT["clave","titulo","contenido"]` | Con permiso | Modifica una sección institucional |
+| `MODINT["clave","titulo","contenido"]` | Administrador | Modifica una sección institucional |
 | `CONTACTO` | Público | Dirección, mapa, teléfonos, correos, horario y redes sociales |
-| `LISCFG["*"]` · `MODCFG["clave","valor"]` | Con permiso | Datos configurables del portal |
-| `LISRED["*"]` · `INSRED["nombre","url","orden"]` · `MODRED["id",...]` · `ELIRED["id"]` | Con permiso | Redes sociales |
-| `LISBIT["*"]` · `LISBIT["correo o texto"]` · `LISBIT["2026-11-20"]` | Con permiso | Bitácora de auditoría |
+| `LISCFG["*"]` · `MODCFG["clave","valor"]` | Administrador | Datos configurables del portal |
+| `LISRED["*"]` · `INSRED["nombre","url","orden"]` · `MODRED["id",...]` · `ELIRED["id"]` | Administrador | Redes sociales |
+| `LISBIT["*"]` · `LISBIT["correo o texto"]` · `LISBIT["2026-11-20"]` | Administrador | Bitácora de auditoría |
 
 Ejemplos:
 
@@ -205,14 +220,14 @@ Los comandos públicos muestran solo lo publicado; quien administra el CU4 ve ta
 | Comando | Acceso | Descripción |
 |---------|--------|-------------|
 | `LISLIN["*"]` | Público | Líneas de investigación con su cantidad de proyectos publicados |
-| `INSLIN["nombre","descripcion"]` · `MODLIN["id",...]` · `ELILIN["id"]` | Con permiso | Una línea con proyectos no se puede eliminar |
+| `INSLIN["nombre","descripcion"]` · `MODLIN["id",...]` · `ELILIN["id"]` | Editor institucional | Una línea con proyectos no se puede eliminar |
 | `LISPRO["*"]` · `VERPRO["id"]` | Público | Proyectos de investigación (filtro por título, responsable, línea o tipo) |
-| `INSPRO["titulo","tipo","linea_id","responsable","integrantes","gestion","estado","resumen"]` · `MODPRO["id",...]` · `PUBPRO["id","SI/NO"]` · `ELIPRO["id"]` | Con permiso | tipo: INVESTIGACION, AULA o SEMILLERO; estado: EN_CURSO o CONCLUIDO; linea_id vacío si no tiene |
+| `INSPRO["titulo","tipo","linea_id","responsable","integrantes","gestion","estado","resumen"]` · `MODPRO["id",...]` · `PUBPRO["id","SI/NO"]` · `ELIPRO["id"]` | Editor institucional | tipo: INVESTIGACION, AULA o SEMILLERO; estado: EN_CURSO o CONCLUIDO; linea_id vacío si no tiene |
 | `LISREP["*"]` | Público | Repositorio de documentos con el enlace a cada archivo |
-| `INSREP["titulo","descripcion","categoria","enlace"]` · `MODREP["id",...]` · `PUBREP["id","SI/NO"]` · `ELIREP["id"]` | Con permiso | categoría: REGLAMENTO, RESOLUCION, FORMULARIO, PLAN_DE_ESTUDIOS, INFORME u OTRO |
+| `INSREP["titulo","descripcion","categoria","enlace"]` · `MODREP["id",...]` · `PUBREP["id","SI/NO"]` · `ELIREP["id"]` | Editor institucional | categoría: REGLAMENTO, RESOLUCION, FORMULARIO, PLAN_DE_ESTUDIOS, INFORME u OTRO |
 | `LISREV["*"]` · `VERREV["id"]` | Público | Ediciones de la revista INNOVAR y sus artículos |
-| `INSREV["volumen","numero","anio","titulo","descripcion","enlace_pdf"]` · `MODREV["id",...]` · `PUBREV["id","SI/NO"]` · `ELIREV["id"]` | Con permiso | La edición nueva queda en borrador; eliminarla borra sus artículos |
-| `INSART["edicion","titulo","autores","resumen","enlace_pdf"]` · `MODART["id",...]` · `ELIART["id"]` | Con permiso | Artículos de una edición |
+| `INSREV["volumen","numero","anio","titulo","descripcion","enlace_pdf"]` · `MODREV["id",...]` · `PUBREV["id","SI/NO"]` · `ELIREV["id"]` | Editor institucional | La edición nueva queda en borrador; eliminarla borra sus artículos |
+| `INSART["edicion","titulo","autores","resumen","enlace_pdf"]` · `MODART["id",...]` · `ELIART["id"]` | Editor institucional | Artículos de una edición |
 
 Ejemplos:
 
@@ -227,17 +242,17 @@ INSREV["2","7","2026","Número especial","Innovación y gestión en la región",
 | Comando | Acceso | Descripción |
 |---------|--------|-------------|
 | `LISCNV["*"]` | Público | Convenios y actividades de vinculación (filtro por tipo, institución o estado) |
-| `INSCNV["tipo","institucion","objeto","fecha_inicio","fecha_fin","estado","responsable","logo_url"]` · `MODCNV["id",...]` · `ELICNV["id"]` | Con permiso | tipo: CONVENIO, PRACTICA, PROYECTO, CONSULTORIA o INTERACCION; estado: VIGENTE, EN_TRAMITE o CONCLUIDO |
+| `INSCNV["tipo","institucion","objeto","fecha_inicio","fecha_fin","estado","responsable","logo_url"]` · `MODCNV["id",...]` · `ELICNV["id"]` | Editor institucional | tipo: CONVENIO, PRACTICA, PROYECTO, CONSULTORIA o INTERACCION; estado: VIGENTE, EN_TRAMITE o CONCLUIDO |
 | `INNOVA` | Público | Descripción, servicios, equipo y proyectos de INNOVA |
-| `MODINN["descripcion"]` | Con permiso | Cambia la descripción de INNOVA |
-| `LISSRV` · `INSSRV["nombre","descripcion"]` · `MODSRV` · `ELISRV` | Con permiso | Servicios de INNOVA |
-| `LISMIE` · `INSMIE["nombre","cargo","semestre","correo"]` · `MODMIE` · `ELIMIE` | Con permiso | Equipo de INNOVA |
-| `LISPRY` · `INSPRY["nombre","cliente","descripcion","anio","resultado"]` · `MODPRY` · `ELIPRY` | Con permiso | Proyectos realizados por INNOVA |
+| `MODINN["descripcion"]` | Editor institucional | Cambia la descripción de INNOVA |
+| `LISSRV` · `INSSRV["nombre","descripcion"]` · `MODSRV` · `ELISRV` | Editor institucional | Servicios de INNOVA |
+| `LISMIE` · `INSMIE["nombre","cargo","semestre","correo"]` · `MODMIE` · `ELIMIE` | Editor institucional | Equipo de INNOVA |
+| `LISPRY` · `INSPRY["nombre","cliente","descripcion","anio","resultado"]` · `MODPRY` · `ELIPRY` | Editor institucional | Proyectos realizados por INNOVA |
 | `SOLINN["tipo","nombre","telefono","organizacion","mensaje"]` | Público | Solicitud de servicio (SERVICIO) o postulación (POSTULACION); se guarda con el correo del remitente (máximo 3 pendientes por correo) |
 | `MISSOL` | Público | Estado de las solicitudes del remitente |
-| `LISSOL["PENDIENTE"]` · `ATESOL["id","ATENDIDA o RECHAZADA","observacion"]` | Con permiso | Atiende una solicitud y **envía un aviso por correo** al solicitante |
+| `LISSOL["PENDIENTE"]` · `ATESOL["id","ATENDIDA o RECHAZADA","observacion"]` | Editor institucional | Atiende una solicitud y **envía un aviso por correo** al solicitante |
 | `REGGRA["nombre","apellidos","telefono","anio_titulacion","empleo_actual","cargo","sector","ciudad"]` · `ACTGRA[...]` · `MISGRA` | Público | El graduado se registra, actualiza y consulta sus propios datos (siempre con su correo) |
-| `LISGRA["*"]` · `EXPGRA["*"]` · `ELIGRA["id"]` | Con permiso | Consulta, **exporta a CSV adjunto** (se abre en Excel) y elimina graduados |
+| `LISGRA["*"]` · `EXPGRA["*"]` · `ELIGRA["id"]` | Editor institucional | Consulta, **exporta a CSV adjunto** (se abre en Excel) y elimina graduados |
 
 Ejemplos:
 
@@ -253,11 +268,11 @@ Las opciones aceptan minúsculas y tildes: `"práctica"` se guarda como `PRACTIC
 
 | Comando | Acceso | Descripción |
 |---------|--------|-------------|
-| `ENVMSJ["nombre","telefono","asunto","mensaje"]` | Público | Mensaje a la Carrera; queda con el correo del remitente (máximo 3 sin responder por correo) y **avisa por correo** a quienes administran el CU7 |
+| `ENVMSJ["nombre","telefono","asunto","mensaje"]` | Público | Mensaje a la Carrera; queda con el correo del remitente (máximo 3 sin responder por correo) y **avisa por correo** a los usuarios activos con rol Administrador o Editor institucional |
 | `MISMSJ` | Público | Estado y respuesta de los mensajes del remitente |
-| `LISMSJ["*"]` · `VERMSJ["id"]` | Con permiso | Mensajes (filtro: un estado o un texto); VERMSJ lo marca como LEIDO |
-| `RESMSJ["id","respuesta"]` | Con permiso | Responde y **envía la respuesta por correo** al remitente |
-| `ARCMSJ["id"]` · `ELIMSJ["id"]` | Con permiso | Archiva o elimina un mensaje |
+| `LISMSJ["*"]` · `VERMSJ["id"]` | Editor institucional | Mensajes (filtro: un estado o un texto); VERMSJ lo marca como LEIDO |
+| `RESMSJ["id","respuesta"]` | Editor institucional | Responde y **envía la respuesta por correo** al remitente |
+| `ARCMSJ["id"]` · `ELIMSJ["id"]` | Editor institucional | Archiva o elimina un mensaje |
 | `BUSCAR["texto"]` | Público | Busca en el contenido publicado de todos los casos de uso, sin distinguir mayúsculas ni tildes |
 
 Ejemplos:
@@ -270,7 +285,7 @@ BUSCAR["reglamento de titulación"]
 
 ### CU8 Reportes y Estadísticas
 
-Todos necesitan permiso sobre el CU8. Las cantidades se muestran con barras hechas en HTML (sin imágenes).
+Solo los puede usar el Administrador. Las cantidades se muestran con barras hechas en HTML (sin imágenes).
 
 | Comando | Descripción |
 |---------|-------------|
@@ -331,6 +346,8 @@ Solo debe haber **una** instancia leyendo el buzón: los correos se borran del s
 5. `presentacion/comandos/ComandosCUx.java`: implementa `ModuloComandos` (definición de comandos con sus parámetros y
    el `switch` que llama al negocio) y se agrega en la lista `modulos` del `Despachador`. Las respuestas estándar
    («Registro insertado correctamente», listados...) están en `Respuestas`.
+6. `modelo/Rol.java`: el código del caso de uso va en el rol fijo que lo gestiona (o sus comandos sueltos, como los
+   banners del CU2); el Administrador ya puede usar todo. `RolesFijosTest` verifica que los comandos sueltos existan.
 
 Si dos casos de uso usan el mismo nombre de comando, el programa no arranca y dice cuál está repetido.
 Nombres ya usados: `HELP`; CU1: `USU`, `ROL`, `MISROL`; CU4: `LIN`, `PRO`, `DOC`, `REV`, `ART` (con LIS/INS/MOD/ELI/VER/PUB);

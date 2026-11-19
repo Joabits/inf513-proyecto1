@@ -60,7 +60,7 @@ class ScriptsSqlTest {
     }
 
     /**
-     * Ninguna tabla queda suelta: fuera de las del CU1 (rol, rol_modulo, usuario), cada tabla tiene usuario_id
+     * Ninguna tabla queda suelta: fuera de usuario (CU1), cada tabla tiene usuario_id
      * en su CREATE TABLE y su ALTER TABLE para bases ya instaladas, y ResponsableDAO sabe llenarla
      * (salvo bitacora, que guarda su usuario_id al insertarse).
      */
@@ -87,7 +87,8 @@ class ScriptsSqlTest {
             }
         }
         Set<String> esperadas = new TreeSet<>(tablas);
-        esperadas.removeAll(Set.of("rol", "rol_modulo", "usuario"));
+        assertTrue(tablas.contains("usuario") && !tablas.contains("rol") && !tablas.contains("rol_modulo"), tablas.toString());
+        esperadas.remove("usuario");
         assertEquals(26, esperadas.size());
         assertEquals(esperadas, conColumna);
         assertEquals(esperadas, conAlter);
@@ -101,5 +102,13 @@ class ScriptsSqlTest {
     void ignoraComentariosYUneLineas() {
         List<String> sentencias = InstaladorBD.dividir("-- comentario\nCREATE TABLE a (\n  id INT\n);\n\nINSERT INTO a VALUES (1);");
         assertEquals(List.of("CREATE TABLE a (\n  id INT\n)", "INSERT INTO a VALUES (1)"), sentencias);
+    }
+
+    @Test
+    void unBloqueDoEsUnaSolaSentencia() {
+        List<String> sentencias = InstaladorBD.dividir("DO $$\nBEGIN\n  UPDATE a SET x = 1;\n  DELETE FROM b;\nEND\n$$;\n"
+                + "SELECT '$$ y $$';\nDROP TABLE c;");
+        assertEquals(List.of("DO $$\nBEGIN\n  UPDATE a SET x = 1;\n  DELETE FROM b;\nEND\n$$", "SELECT '$$ y $$'",
+                "DROP TABLE c"), sentencias);
     }
 }

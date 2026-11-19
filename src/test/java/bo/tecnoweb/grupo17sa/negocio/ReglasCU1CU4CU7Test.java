@@ -1,6 +1,7 @@
 package bo.tecnoweb.grupo17sa.negocio;
 
 import bo.tecnoweb.grupo17sa.datos.InstaladorBD;
+import bo.tecnoweb.grupo17sa.modelo.Rol;
 import java.io.IOException;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -15,7 +16,7 @@ class ReglasCU1CU4CU7Test {
 
     @Test
     void losScriptsSeDividenEnSentenciasCompletas() throws IOException {
-        assertSentencias("sql/cu1_usuarios.sql", 6);
+        assertSentencias("sql/cu1_usuarios.sql", 5);
         assertSentencias("sql/cu4_investigacion.sql", 12);
         assertSentencias("sql/cu7_contacto.sql", 4);
     }
@@ -24,25 +25,29 @@ class ReglasCU1CU4CU7Test {
         List<String> sentencias = InstaladorBD.dividir(InstaladorBD.leerScript(script));
         assertEquals(cantidad, sentencias.size(), script);
         for (String sentencia : sentencias) {
-            assertTrue(sentencia.startsWith("CREATE") || sentencia.startsWith("ALTER") || sentencia.startsWith("INSERT"), sentencia);
+            assertTrue(sentencia.matches("(?s)(CREATE|ALTER|INSERT|DROP TABLE IF EXISTS|DO \\$\\$)\\s.*"), sentencia);
         }
     }
 
+    /** La migración de los roles dinámicos a los fijos es una sola sentencia, con sus ';' internos. */
     @Test
-    void elNombreDelRolSeNormaliza() throws ErrorNegocio {
-        assertEquals("EDITOR_DE_PRENSA", UsuariosNegocio.normalizarRol("  editor de prensa "));
-        assertEquals("ATENCION_AL_PUBLICO", UsuariosNegocio.normalizarRol("Atención al público"));
-        assertEquals("EDITOR_2", UsuariosNegocio.normalizarRol("editor-2"));
-        assertThrows(ErrorNegocio.class, () -> UsuariosNegocio.normalizarRol("ab"));
-        assertThrows(ErrorNegocio.class, () -> UsuariosNegocio.normalizarRol("rol;DROP"));
+    void elScriptDelCu1MigraLosRolesDinamicosEnUnBloque() throws IOException {
+        List<String> sentencias = InstaladorBD.dividir(InstaladorBD.leerScript("sql/cu1_usuarios.sql"));
+        String bloque = sentencias.get(1);
+        assertTrue(bloque.startsWith("DO $$") && bloque.endsWith("$$"), bloque);
+        assertTrue(bloque.contains("DROP COLUMN rol_id;"), bloque);
+        assertEquals(List.of("DROP TABLE IF EXISTS rol_modulo", "DROP TABLE IF EXISTS rol"), sentencias.subList(2, 4));
     }
 
     @Test
-    void losCasosDeUsoDelRolSeValidan() throws ErrorNegocio {
-        assertEquals(List.of("CU2", "CU4"), UsuariosNegocio.leerCasosDeUso("cu2, CU4 ,cu2"));
-        assertEquals(List.of("*"), UsuariosNegocio.leerCasosDeUso(" * "));
-        assertThrows(ErrorNegocio.class, () -> UsuariosNegocio.leerCasosDeUso("CU2,CU9"));
-        assertThrows(ErrorNegocio.class, () -> UsuariosNegocio.leerCasosDeUso(" , "));
+    void elRolSeLeeSinImportarComoSeEscriba() throws ErrorNegocio {
+        assertEquals(Rol.EDITOR_COMUNICACION, UsuariosNegocio.leerRol("Editor de Comunicación"));
+        assertEquals(Rol.EDITOR_COMUNICACION, UsuariosNegocio.leerRol("EDITOR_COMUNICACION"));
+        assertEquals(Rol.EDITOR_INSTITUCIONAL, UsuariosNegocio.leerRol("  editor institucional "));
+        assertEquals(Rol.ADMINISTRADOR, UsuariosNegocio.leerRol("administrador"));
+        assertThrows(ErrorNegocio.class, () -> UsuariosNegocio.leerRol("CONSULTOR"), "el rol CONSULTOR ya no existe");
+        assertThrows(ErrorNegocio.class, () -> UsuariosNegocio.leerRol("VISITANTE"), "el visitante no es un usuario");
+        assertThrows(ErrorNegocio.class, () -> UsuariosNegocio.leerRol("editor"));
     }
 
     @Test

@@ -3,6 +3,7 @@ package bo.tecnoweb.grupo17sa.negocio;
 import bo.tecnoweb.grupo17sa.datos.MensajeContactoDAO;
 import bo.tecnoweb.grupo17sa.datos.UsuarioDAO;
 import bo.tecnoweb.grupo17sa.modelo.MensajeContacto;
+import bo.tecnoweb.grupo17sa.modelo.Rol;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
@@ -118,7 +119,7 @@ public class MensajesNegocio {
     /** Usuarios activos que atienden el CU7. Si el CU1 no está instalado no hay a quién avisar. */
     private List<String> correosQueAtienden(Connection con) {
         try {
-            return usuarios.correosConPermiso(con, MODULO);
+            return usuarios.correosConRol(con, Rol.quePueden(MODULO, "LISMSJ"));
         } catch (SQLException e) {
             return List.of();
         }
