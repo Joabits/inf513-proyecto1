@@ -29,7 +29,15 @@ public final class Registro {
     }
 
     public static synchronized void acceso(String mensaje) {
-        escribir("access.log", mensaje);
+        escribir("access.log", unaLinea(mensaje));
+    }
+
+    /**
+     * access.log tiene una entrada por línea. El detalle de un error de PostgreSQL puede traer saltos de línea
+     * ("... no existe la relación «noticia»\n  Position: 108"): se cambian por un espacio para no partir la entrada.
+     */
+    public static String unaLinea(String mensaje) {
+        return mensaje.replaceAll("\\s*\\R\\s*", " ");
     }
 
     public static synchronized void error(String mensaje, Throwable excepcion) {

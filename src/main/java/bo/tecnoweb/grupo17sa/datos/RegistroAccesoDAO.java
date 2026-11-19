@@ -27,6 +27,7 @@ public class RegistroAccesoDAO {
     private static final Pattern NOMBRE_COMANDO =
             Pattern.compile("^\\s*(?:(?:re|rv|fw|fwd)\\s*:\\s*)*([A-Za-z][A-Za-z0-9]*)", Pattern.CASE_INSENSITIVE);
     private static final Pattern MILISEGUNDOS = Pattern.compile("(\\d+) ms$");
+    private static final Pattern INICIO_ENTRADA = Pattern.compile("^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2} \\| ");
 
     /** Líneas de comandos procesados entre dos fechas (inclusive). */
     public List<LineaAcceso> leer(LocalDate desde, LocalDate hasta) throws IOException {
@@ -35,13 +36,30 @@ public class RegistroAccesoDAO {
         if (!Files.exists(archivo)) {
             return lineas;
         }
-        for (String texto : Files.readAllLines(archivo, StandardCharsets.UTF_8)) {
+        for (String texto : unirPartidas(Files.readAllLines(archivo, StandardCharsets.UTF_8))) {
             LineaAcceso linea = interpretar(texto);
             if (linea != null && !linea.fecha().toLocalDate().isBefore(desde) && !linea.fecha().toLocalDate().isAfter(hasta)) {
                 lineas.add(linea);
             }
         }
         return lineas;
+    }
+
+    /**
+     * Una línea que no empieza con la fecha es la continuación de la entrada anterior: así quedaban los errores de
+     * varias líneas antes de que Registro los escribiera en una sola. Se unen para que el reporte los cuente.
+     */
+    static List<String> unirPartidas(List<String> lineas) {
+        List<String> entradas = new ArrayList<>();
+        for (String texto : lineas) {
+            if (entradas.isEmpty() || INICIO_ENTRADA.matcher(texto).find()) {
+                entradas.add(texto);
+            } else {
+                int ultima = entradas.size() - 1;
+                entradas.set(ultima, entradas.get(ultima) + " " + texto.strip());
+            }
+        }
+        return entradas;
     }
 
     /** Devuelve null para las líneas que no son de un comando (respuesta enviada, aviso, correo ignorado...). */
