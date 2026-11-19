@@ -15,6 +15,10 @@ class ParametroTest {
         assertNotNull(Parametro.entero("orden").validar("2.5"));
         assertNotNull(Parametro.entero("orden").validar("99999999999"));
         assertNotNull(Parametro.entero("orden").validar(""));
+
+        assertNull(Parametro.enteroOpcional("materia_id").validar(""));
+        assertNull(Parametro.enteroOpcional("materia_id").validar("4"));
+        assertNotNull(Parametro.enteroOpcional("materia_id").validar("cuatro"));
     }
 
     @Test

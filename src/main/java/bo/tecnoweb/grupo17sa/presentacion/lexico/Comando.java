@@ -50,6 +50,11 @@ public final class Comando {
         return Integer.parseInt(parametros.get(i));
     }
 
+    public Integer enteroOpcional(int i) {
+        String valor = parametros.get(i);
+        return valor.isEmpty() ? null : Integer.valueOf(valor);
+    }
+
     public BigDecimal decimal(int i) {
         return new BigDecimal(parametros.get(i).replace(',', '.'));
     }

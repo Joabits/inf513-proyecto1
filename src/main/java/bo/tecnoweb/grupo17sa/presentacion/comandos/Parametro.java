@@ -42,6 +42,10 @@ public final class Parametro {
         return new Parametro(nombre, TipoDato.ENTERO, true, 0);
     }
 
+    public static Parametro enteroOpcional(String nombre) {
+        return new Parametro(nombre, TipoDato.ENTERO, false, 0);
+    }
+
     public static Parametro decimal(String nombre) {
         return new Parametro(nombre, TipoDato.DECIMAL, true, 0);
     }

@@ -71,4 +71,37 @@ class DespachadorTest {
         assertFalse(r.esExito());
         assertEquals("Error: Comando mal escrito", PlantillaHTML.asunto(r));
     }
+
+    @Test
+    void ayudaIncluyeComandosCU3() {
+        Respuesta r = despachador.procesar("visitante@x.com", "HELP[\"CU3\"]");
+        assertTrue(r.esExito());
+        String texto = r.bloques().get(0).texto();
+        assertTrue(texto.contains("LISINF[\"filtro\"]"));
+        assertTrue(texto.contains("LISMAT[\"filtro\"]"));
+        assertTrue(texto.contains("LISDOC[\"filtro\"]"));
+        assertTrue(texto.contains("INSMAT[\"sigla\",\"nombre\",\"semestre\",\"creditos\",\"prerrequisito\"]"));
+    }
+
+    @Test
+    void sinPermisoParaComandosAdministrativosCU3() {
+        Respuesta r = despachador.procesar("visitante@x.com", "INSMAT[\"ADM100\",\"Administracion\",\"1\",\"4\",\"\"]");
+        assertFalse(r.esExito());
+        assertEquals("Permiso denegado", r.titulo());
+    }
+
+    @Test
+    void parametrosIncorrectosEnCU3() {
+        Respuesta r1 = despachador.procesar("visitante@x.com", "INSMAT[\"ADM100\",\"Administracion\"]");
+        assertFalse(r1.esExito());
+        assertTrue(r1.mensaje().contains("requiere 5 parámetro(s) y se recibieron 2"));
+
+        Respuesta r2 = despachador.procesar("visitante@x.com", "INSMAT[\"ADM100\",\"Administracion\",\"primero\",\"4\",\"\"]");
+        assertFalse(r2.esExito());
+        assertTrue(r2.mensaje().contains("El parámetro 3 (semestre) debe ser un número entero"));
+
+        Respuesta r3 = despachador.procesar("visitante@x.com", "INSINF[\"Titulo\",\"Contenido\",\"cinco\"]");
+        assertFalse(r3.esExito());
+        assertTrue(r3.mensaje().contains("El parámetro 3 (orden) debe ser un número entero"));
+    }
 }

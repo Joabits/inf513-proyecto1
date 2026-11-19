@@ -15,6 +15,7 @@ public final class InstaladorBD {
     /** Scripts de src/main/resources/sql, en orden. Cada caso de uso agrega aquí el suyo. */
     private static final String[] SCRIPTS = {
             "sql/cu2_portal.sql",
+            "sql/cu3_academica.sql",
             "sql/cu5_vinculacion.sql"
     };
 

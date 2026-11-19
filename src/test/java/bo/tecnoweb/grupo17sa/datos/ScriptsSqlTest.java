@@ -21,6 +21,16 @@ class ScriptsSqlTest {
     }
 
     @Test
+    void elScriptDelCu3SeDivideEnSentenciasCompletas() throws IOException {
+        List<String> sentencias = InstaladorBD.dividir(InstaladorBD.leerScript("sql/cu3_academica.sql"));
+        assertEquals(6, sentencias.size());
+        for (String sentencia : sentencias) {
+            assertTrue(sentencia.startsWith("CREATE") || sentencia.startsWith("INSERT"), sentencia);
+            assertTrue(!sentencia.endsWith(";"), sentencia);
+        }
+    }
+
+    @Test
     void elScriptDelCu5SeDivideEnSentenciasCompletas() throws IOException {
         List<String> sentencias = InstaladorBD.dividir(InstaladorBD.leerScript("sql/cu5_vinculacion.sql"));
         assertEquals(14, sentencias.size());
