@@ -32,10 +32,13 @@ public class Despachador {
 
     /** Un módulo por caso de uso. Para activar un caso de uso nuevo, agregue aquí su clase. */
     private final List<ModuloComandos> modulos = List.of(
+            new ComandosCU1(),
             new ComandosCU2(),
             new ComandosCU3(),
+            new ComandosCU4(),
             new ComandosCU5(),
             new ComandosCU6(),
+            new ComandosCU7(),
             new ComandosCU8()
     );
 

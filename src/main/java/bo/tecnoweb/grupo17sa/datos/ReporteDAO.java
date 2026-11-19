@@ -21,6 +21,8 @@ public class ReporteDAO {
 
     /** Tablas del resumen general: caso de uso, nombre a mostrar y tabla. Cada integrante agrega las suyas. */
     public static final String[][] TABLAS_RESUMEN = {
+            {"CU1", "Usuarios", "usuario"},
+            {"CU1", "Roles", "rol"},
             {"CU2", "Banners", "banner"},
             {"CU2", "Contenidos destacados", "destacado"},
             {"CU2", "Accesos rápidos", "acceso_rapido"},
@@ -29,6 +31,11 @@ public class ReporteDAO {
             {"CU3", "Información académica", "info_academica"},
             {"CU3", "Materias", "materia"},
             {"CU3", "Plantel docente", "docente"},
+            {"CU4", "Líneas de investigación", "investigacion_linea"},
+            {"CU4", "Proyectos de investigación", "investigacion_proyecto"},
+            {"CU4", "Documentos", "documento"},
+            {"CU4", "Ediciones de la revista", "revista_edicion"},
+            {"CU4", "Artículos de la revista", "revista_articulo"},
             {"CU5", "Convenios", "convenio"},
             {"CU5", "Servicios de INNOVA", "innova_servicio"},
             {"CU5", "Equipo de INNOVA", "innova_miembro"},
@@ -39,6 +46,7 @@ public class ReporteDAO {
             {"CU6", "Comunicados", "comunicado"},
             {"CU6", "Eventos", "evento"},
             {"CU6", "Galería", "galeria"},
+            {"CU7", "Mensajes de contacto", "mensaje_contacto"},
     };
 
     private static final Set<String> COLUMNAS_BITACORA = Set.of("usuario", "modulo", "accion");

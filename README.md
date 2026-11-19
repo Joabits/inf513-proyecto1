@@ -81,6 +81,16 @@ flowchart TD
 
 Base `db_grupo17sa` (PostgreSQL). Scripts en `src/main/resources/sql/`; se instalan con `--instalar-bd`.
 
+### CU1 Gestión de Usuarios, roles y permisos (`cu1_usuarios.sql`)
+
+| Tabla | Columnas | Uso |
+|-------|----------|-----|
+| `rol` | **id**, nombre (único, en mayúsculas), descripcion, creado | Roles del sistema (RF-18) |
+| `rol_modulo` | **rol_id**, **modulo** | Casos de uso que administra cada rol: `CU1` a `CU8`, o `*` para todos (RF-18) |
+| `usuario` | **id**, correo (único, en minúsculas), nombre, rol_id, activo, creado, actualizado | Usuarios: se identifican por el correo desde el que envían los comandos (RF-18) |
+
+Roles iniciales: `ADMINISTRADOR` (`*`), `EDITOR_INSTITUCIONAL` (CU2, CU4, CU5), `EDITOR_COMUNICACION` (CU7) y `CONSULTOR` (CU8).
+
 ### CU2 Portal Web y Bitácora de Auditoría (`cu2_portal.sql`)
 
 | Tabla | Columnas | Uso |
@@ -92,6 +102,19 @@ Base `db_grupo17sa` (PostgreSQL). Scripts en `src/main/resources/sql/`; se insta
 | `seccion_institucional` | **clave**, titulo, contenido, orden, actualizado | Historia, misión, visión, etc. (RF-02) |
 | `red_social` | **id**, nombre (único), url, orden | Redes sociales (RF-16) |
 | `bitacora` | **id**, fecha, usuario, accion, modulo, tabla, elemento, detalle | Acciones de los administradores en todos los casos de uso (RF-19) |
+
+### CU4 Investigaciones, Revista INNOVAR y Repositorio Documental (`cu4_investigacion.sql`)
+
+| Tabla | Columnas | Uso |
+|-------|----------|-----|
+| `investigacion_linea` | **id**, nombre (único), descripcion, creado | Líneas de investigación (RF-07) |
+| `investigacion_proyecto` | **id**, titulo, tipo, linea_id, responsable, integrantes, gestion, estado, resumen, publicado, creado, actualizado | Proyectos de investigación, de aula (PIA) y de semillero (RF-07) |
+| `documento` | **id**, titulo, descripcion, categoria, enlace, publicado, creado, actualizado | Repositorio de documentos con el enlace al archivo (RF-06) |
+| `revista_edicion` | **id**, volumen, numero, anio, titulo, descripcion, enlace_pdf, publicada, creado | Ediciones de la revista INNOVAR; (anio, numero) es único (RF-08) |
+| `revista_articulo` | **id**, edicion_id, titulo, autores, resumen, enlace_pdf, orden, creado | Artículos de cada edición; se borran con su edición (RF-08) |
+
+Los archivos (PDF) se publican en el servidor web de la materia y en la base se guarda su enlace. Una edición nueva queda
+en borrador hasta publicarla; lo oculto y los borradores solo los ve quien administra el CU4.
 
 ### CU5 Vinculación, Empresa Junior INNOVA y Alumni (`cu5_vinculacion.sql`)
 
@@ -107,7 +130,39 @@ Base `db_grupo17sa` (PostgreSQL). Scripts en `src/main/resources/sql/`; se insta
 Los valores permitidos de `tipo`, `estado` y `sector` están en restricciones `CHECK` y se validan antes de llegar a la base.
 La descripción de INNOVA se guarda en `configuracion` (clave `innova_descripcion`).
 
+### CU7 Formulario de Contacto y Búsqueda Interna Global (`cu7_contacto.sql`)
+
+| Tabla | Columnas | Uso |
+|-------|----------|-----|
+| `mensaje_contacto` | **id**, correo, nombre, telefono, asunto, mensaje, estado, respuesta, respondido_por, respondido_en, fecha | Mensajes enviados a la Carrera (RF-15) |
+
+`estado`: NUEVO, LEIDO, RESPONDIDO o ARCHIVADO. La búsqueda global (RF-17) no tiene tablas propias: consulta el contenido
+publicado de los demás casos de uso (`BusquedaDAO.FUENTES`).
+
 ## Comandos implementados
+
+### Permisos (CU1)
+
+Un comando «Con permiso» lo puede usar un usuario **activo** cuyo rol tiene ese caso de uso (o `*`). Los correos de
+`admin.correos` en `config.properties` son **administradores de arranque**: tienen permiso aunque no estén en la base y
+sirven para registrar el primer usuario. Nadie puede desactivarse ni eliminarse a sí mismo, y el sistema no permite
+quedarse sin un administrador activo cuando no hay administradores de arranque.
+
+### CU1 Gestión de Usuarios, roles y permisos
+
+| Comando | Acceso | Descripción |
+|---------|--------|-------------|
+| `LISUSU["*"]` · `INSUSU["correo","nombre","rol"]` · `MODUSU["id","nombre","rol","activo"]` · `ELIUSU["id"]` | Con permiso | Usuarios (activo: SI o NO) |
+| `LISROL["*"]` · `INSROL["nombre","descripcion","casos_de_uso"]` · `MODROL["id",...]` · `ELIROL["id"]` | Con permiso | Roles; casos_de_uso: `CU2,CU4` o `*`. El rol ADMINISTRADOR no se borra ni pierde el `*` |
+| `MISROL` | Público | Usuario, rol y casos de uso del remitente |
+
+Ejemplos:
+
+```
+INSUSU["director@ejemplo.edu.bo","Director de Carrera","ADMINISTRADOR"]
+INSROL["editor de prensa","Noticias y mensajes","CU2, CU7"]
+MODUSU["2","Editora Institucional","CONSULTOR","SI"]
+```
 
 ### CU2 Portal Web y Bitácora de Auditoría
 
@@ -130,6 +185,30 @@ Ejemplos:
 INSBAN["Feria de emprendimiento","Del 25 al 27 de noviembre","https://www.tecnoweb.org.bo/inf513/grupo17sa/img/feria.jpg","","4"]
 MODINT["mision","Misión","Formar profesionales en Administración de Empresas..."]
 INSRED["TikTok","https://www.tiktok.com/","4"]
+```
+
+### CU4 Investigaciones, Revista INNOVAR y Repositorio Documental
+
+Los comandos públicos muestran solo lo publicado; quien administra el CU4 ve también lo oculto y los borradores.
+
+| Comando | Acceso | Descripción |
+|---------|--------|-------------|
+| `LISLIN["*"]` | Público | Líneas de investigación con su cantidad de proyectos publicados |
+| `INSLIN["nombre","descripcion"]` · `MODLIN["id",...]` · `ELILIN["id"]` | Con permiso | Una línea con proyectos no se puede eliminar |
+| `LISPRO["*"]` · `VERPRO["id"]` | Público | Proyectos de investigación (filtro por título, responsable, línea o tipo) |
+| `INSPRO["titulo","tipo","linea_id","responsable","integrantes","gestion","estado","resumen"]` · `MODPRO["id",...]` · `PUBPRO["id","SI/NO"]` · `ELIPRO["id"]` | Con permiso | tipo: INVESTIGACION, AULA o SEMILLERO; estado: EN_CURSO o CONCLUIDO; linea_id vacío si no tiene |
+| `LISREP["*"]` | Público | Repositorio de documentos con el enlace a cada archivo |
+| `INSREP["titulo","descripcion","categoria","enlace"]` · `MODREP["id",...]` · `PUBREP["id","SI/NO"]` · `ELIREP["id"]` | Con permiso | categoría: REGLAMENTO, RESOLUCION, FORMULARIO, PLAN_DE_ESTUDIOS, INFORME u OTRO |
+| `LISREV["*"]` · `VERREV["id"]` | Público | Ediciones de la revista INNOVAR y sus artículos |
+| `INSREV["volumen","numero","anio","titulo","descripcion","enlace_pdf"]` · `MODREV["id",...]` · `PUBREV["id","SI/NO"]` · `ELIREV["id"]` | Con permiso | La edición nueva queda en borrador; eliminarla borra sus artículos |
+| `INSART["edicion","titulo","autores","resumen","enlace_pdf"]` · `MODART["id",...]` · `ELIART["id"]` | Con permiso | Artículos de una edición |
+
+Ejemplos:
+
+```
+INSPRO["Talento humano en mypes cruceñas","investigacion","3","Dra. Rosa Quispe","Luis Pérez; Ana Gómez","2026","en curso","Estudio sobre la gestión del talento humano en las mypes de Santa Cruz."]
+INSREP["Reglamento de titulación","Modalidades y requisitos","reglamento","https://www.tecnoweb.org.bo/inf513/grupo17sa/docs/titulacion.pdf"]
+INSREV["2","7","2026","Número especial","Innovación y gestión en la región",""]
 ```
 
 ### CU5 Vinculación, Empresa Junior INNOVA y Alumni
@@ -158,6 +237,25 @@ ATESOL["3","ATENDIDA","Un consultor de INNOVA le llamará esta semana."]
 ```
 
 Las opciones aceptan minúsculas y tildes: `"práctica"` se guarda como `PRACTICA` y `"en trámite"` como `EN_TRAMITE`.
+
+### CU7 Formulario de Contacto y Búsqueda Interna Global
+
+| Comando | Acceso | Descripción |
+|---------|--------|-------------|
+| `ENVMSJ["nombre","telefono","asunto","mensaje"]` | Público | Mensaje a la Carrera; queda con el correo del remitente (máximo 3 sin responder por correo) y **avisa por correo** a quienes administran el CU7 |
+| `MISMSJ` | Público | Estado y respuesta de los mensajes del remitente |
+| `LISMSJ["*"]` · `VERMSJ["id"]` | Con permiso | Mensajes (filtro: un estado o un texto); VERMSJ lo marca como LEIDO |
+| `RESMSJ["id","respuesta"]` | Con permiso | Responde y **envía la respuesta por correo** al remitente |
+| `ARCMSJ["id"]` · `ELIMSJ["id"]` | Con permiso | Archiva o elimina un mensaje |
+| `BUSCAR["texto"]` | Público | Busca en el contenido publicado de todos los casos de uso, sin distinguir mayúsculas ni tildes |
+
+Ejemplos:
+
+```
+ENVMSJ["Ana Pérez","70011122","Consulta de admisión","Quisiera saber las fechas de inscripción."]
+RESMSJ["1","Las inscripciones abren el 2 de enero en la Dirección de Carrera."]
+BUSCAR["reglamento de titulación"]
+```
 
 ### CU8 Reportes y Estadísticas
 
@@ -201,7 +299,7 @@ En `config.properties`:
 - `db.*`: conexión a PostgreSQL (`localhost` para desarrollo o `db.tecnoweb.org.bo` en el servidor).
 - `pop3.*`: buzón `grupo17sa` en `mail.tecnoweb.org.bo:110`.
 - `smtp.*`: `mail.tecnoweb.org.bo:25` sin autenticación, o Gmail (`smtp.gmail.com:587`, `starttls`).
-- `admin.correos`: correos con permiso de administración, mientras se integra el CU1.
+- `admin.correos`: administradores de arranque (separados por comas); con ellos se registra el primer usuario con `INSUSU`.
 
 Solo debe haber **una** instancia leyendo el buzón: los correos se borran del servidor al procesarlos.
 
@@ -222,6 +320,7 @@ Solo debe haber **una** instancia leyendo el buzón: los correos se borran del s
    («Registro insertado correctamente», listados...) están en `Respuestas`.
 
 Si dos casos de uso usan el mismo nombre de comando, el programa no arranca y dice cuál está repetido.
-Nombres ya usados: `HELP`; CU2: `INICIO`, `CONTACTO`, `BAN`, `DES`, `ACC`, `INT`, `CFG`, `RED`, `BIT`;
+Nombres ya usados: `HELP`; CU1: `USU`, `ROL`, `MISROL`; CU4: `LIN`, `PRO`, `DOC`, `REV`, `ART` (con LIS/INS/MOD/ELI/VER/PUB);
+CU7: `MSJ` (con ENV/MIS/LIS/VER/RES/ARC/ELI), `BUSCAR`; CU2: `INICIO`, `CONTACTO`, `BAN`, `DES`, `ACC`, `INT`, `CFG`, `RED`, `BIT`;
 CU5: `CNV`, `INNOVA`, `INN`, `SRV`, `MIE`, `PRY`, `SOLINN`, `SOL`, `GRA` (con los prefijos LIS/INS/MOD/ELI/VER/MIS/REG/ACT/EXP/ATE);
 CU8: `REPGEN`, `REPBIT`, `REPVIN`, `REPALU`, `REPINN`, `REPUSO`.

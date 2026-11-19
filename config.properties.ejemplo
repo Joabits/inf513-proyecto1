@@ -28,6 +28,7 @@ smtp.usuario=
 smtp.clave=
 smtp.remitente=grupo17sa@tecnoweb.org.bo
 
-# ---------- Permisos (temporal, hasta integrar el CU1 Gestión de Usuarios) ----------
-# Correos que pueden usar los comandos de administración, separados por comas.
+# ---------- Administradores de arranque (CU1 Gestión de Usuarios) ----------
+# Los permisos se manejan con usuarios y roles en la base (INSUSU, INSROL...). Estos correos, separados por comas,
+# tienen permiso aunque no estén registrados: sirven para crear el primer usuario. Se puede dejar vacío después.
 admin.correos=
