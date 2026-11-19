@@ -316,10 +316,15 @@ Otras opciones:
 | Opción | Uso |
 |--------|-----|
 | `--una-vez` | Revisa el buzón una sola vez y termina |
-| `--probar "LISBAN[\"*\"]" [--de correo@x.com]` | Ejecuta un comando sin correo; guarda el correo de respuesta en `salida/` |
+| `--probar 'LISMAT["*"]' [--de correo@x.com]` | Ejecuta un comando sin correo; guarda el correo de respuesta en `salida/` |
 | `--consola [--de correo@x.com]` | Escribe comandos uno por uno para probarlos |
 | `--enviar "INICIO" --a correo@x.com [--de correo@y.com]` | Ejecuta un comando y envía la respuesta por SMTP, sin leer el buzón |
 | `--config ruta` | Usa otro archivo de configuración |
+
+Las comillas del comando dependen de la terminal. En Linux, macOS, Git Bash y PowerShell 7 el comando va entre
+comillas simples, como en la tabla: `--probar 'LISMAT["*"]'`. En Windows PowerShell 5.1 las comillas internas llevan
+una barra: `--probar 'LISMAT[\"*\"]'`; en `cmd`: `--probar "LISMAT[\"*\"]"`. Con `--consola` el comando se escribe
+tal cual, como en el asunto del correo.
 
 En `config.properties`:
 - `db.*`: conexión a PostgreSQL (`localhost` para desarrollo o `db.tecnoweb.org.bo` en el servidor).
