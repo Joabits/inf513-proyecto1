@@ -118,7 +118,7 @@ public final class Parametro {
             case DECIMAL:
                 return valor.matches("[+-]?\\d{1,12}([.,]\\d{1,4})?") ? null : "debe ser un número decimal, por ejemplo 150.50";
             case FECHA:
-                return Comando.leerFecha(valor) != null ? null : "debe ser una fecha válida AAAA-MM-DD o DD/MM/AAAA";
+                return (Comando.leerFecha(valor) != null || Comando.leerFechaHora(valor) != null) ? null : "debe ser una fecha válida AAAA-MM-DD o DD/MM/AAAA";
             case BOOLEANO:
                 return valor.toUpperCase(Locale.ROOT).matches("SI|SÍ|NO|TRUE|FALSE") ? null : "debe ser SI o NO";
             case CORREO:

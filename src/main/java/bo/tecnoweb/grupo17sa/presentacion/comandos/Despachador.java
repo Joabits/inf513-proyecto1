@@ -35,6 +35,7 @@ public class Despachador {
             new ComandosCU2(),
             new ComandosCU3(),
             new ComandosCU5(),
+            new ComandosCU6(),
             new ComandosCU8()
     );
 

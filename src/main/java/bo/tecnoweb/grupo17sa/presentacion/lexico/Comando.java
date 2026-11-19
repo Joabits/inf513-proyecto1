@@ -2,6 +2,7 @@ package bo.tecnoweb.grupo17sa.presentacion.lexico;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
@@ -14,6 +15,10 @@ import java.util.Locale;
 public final class Comando {
 
     private static final DateTimeFormatter FECHA_BOLIVIANA = DateTimeFormatter.ofPattern("dd/MM/uuuu");
+    private static final DateTimeFormatter FECHA_HORA_MIN = DateTimeFormatter.ofPattern("uuuu-MM-dd HH:mm");
+    private static final DateTimeFormatter FECHA_HORA_SEG = DateTimeFormatter.ofPattern("uuuu-MM-dd HH:mm:ss");
+    private static final DateTimeFormatter FECHA_HORA_BOL_MIN = DateTimeFormatter.ofPattern("dd/MM/uuuu HH:mm");
+    private static final DateTimeFormatter FECHA_HORA_BOL_SEG = DateTimeFormatter.ofPattern("dd/MM/uuuu HH:mm:ss");
 
     private final String nombre;
     private final List<String> parametros;
@@ -68,16 +73,53 @@ public final class Comando {
         return leerFecha(parametros.get(i));
     }
 
-    /** Acepta AAAA-MM-DD o DD/MM/AAAA; devuelve null si no es una fecha válida. */
+    public LocalDateTime fechaHora(int i) {
+        return leerFechaHora(parametros.get(i));
+    }
+
+    public LocalDateTime fechaHoraOpcional(int i) {
+        String valor = parametros.get(i);
+        return valor.isEmpty() ? null : leerFechaHora(valor);
+    }
+
+    /** Acepta AAAA-MM-DD o DD/MM/AAAA (incluso con hora); devuelve null si no es una fecha válida. */
     public static LocalDate leerFecha(String texto) {
-        if (texto == null) {
+        if (texto == null || texto.isBlank()) {
             return null;
         }
+        String t = texto.trim().split("[ T]")[0];
         try {
-            return texto.contains("/") ? LocalDate.parse(texto.trim(), FECHA_BOLIVIANA) : LocalDate.parse(texto.trim());
-        } catch (DateTimeParseException e) {
+            return t.contains("/") ? LocalDate.parse(t, FECHA_BOLIVIANA) : LocalDate.parse(t);
+        } catch (DateTimeParseException | ArrayIndexOutOfBoundsException e) {
             return null;
         }
+    }
+
+    /** Acepta AAAA-MM-DD HH:mm, AAAA-MM-DD, DD/MM/AAAA HH:mm, DD/MM/AAAA; normaliza a LocalDateTime. */
+    public static LocalDateTime leerFechaHora(String texto) {
+        if (texto == null || texto.isBlank()) {
+            return null;
+        }
+        String t = texto.trim();
+        if (t.contains("T")) {
+            try {
+                return LocalDateTime.parse(t);
+            } catch (DateTimeParseException ignored) {
+            }
+        }
+        if (t.contains(" ")) {
+            String[] partes = t.split(" ");
+            if (partes.length == 2) {
+                try {
+                    return partes[0].contains("/")
+                            ? (partes[1].length() <= 5 ? LocalDateTime.parse(t, FECHA_HORA_BOL_MIN) : LocalDateTime.parse(t, FECHA_HORA_BOL_SEG))
+                            : (partes[1].length() <= 5 ? LocalDateTime.parse(t, FECHA_HORA_MIN) : LocalDateTime.parse(t, FECHA_HORA_SEG));
+                } catch (DateTimeParseException ignored) {
+                }
+            }
+        }
+        LocalDate ld = leerFecha(t);
+        return ld != null ? ld.atStartOfDay() : null;
     }
 
     @Override

@@ -40,6 +40,18 @@ class ScriptsSqlTest {
     }
 
     @Test
+    void elScriptDelCu6SeDivideEnSentenciasCompletas() throws IOException {
+        List<String> sentencias = InstaladorBD.dividir(InstaladorBD.leerScript("sql/cu6_noticias.sql"));
+        assertEquals(8, sentencias.size());
+        long createTables = sentencias.stream().filter(s -> s.startsWith("CREATE TABLE")).count();
+        assertEquals(4, createTables);
+        for (String sentencia : sentencias) {
+            assertTrue(sentencia.startsWith("CREATE") || sentencia.startsWith("INSERT"), sentencia);
+            assertTrue(!sentencia.endsWith(";"), sentencia);
+        }
+    }
+
+    @Test
     void ignoraComentariosYUneLineas() {
         List<String> sentencias = InstaladorBD.dividir("-- comentario\nCREATE TABLE a (\n  id INT\n);\n\nINSERT INTO a VALUES (1);");
         assertEquals(List.of("CREATE TABLE a (\n  id INT\n)", "INSERT INTO a VALUES (1)"), sentencias);

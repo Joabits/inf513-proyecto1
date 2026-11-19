@@ -104,4 +104,20 @@ class DespachadorTest {
         assertFalse(r3.esExito());
         assertTrue(r3.mensaje().contains("El parámetro 3 (orden) debe ser un número entero"));
     }
+
+    @Test
+    void ayudaIncluyeComandosCU6SinColisiones() {
+        Respuesta r = despachador.procesar("visitante@x.com", "HELP[\"CU6\"]");
+        assertTrue(r.esExito());
+        String texto = r.bloques().get(0).texto();
+        assertTrue(texto.contains("LISNOT[\"filtro\"]"));
+        assertTrue(texto.contains("VERNOT[\"id\"]"));
+        assertTrue(texto.contains("LISCOM[\"filtro\"]"));
+        assertTrue(texto.contains("LISEVT[\"filtro\"]"));
+        assertTrue(texto.contains("LISGAL[\"filtro\"]"));
+        assertTrue(texto.contains("INSNOT[\"titulo\",\"resumen\",\"contenido\",\"imagen_url\",\"autor\",\"orden\"]"));
+        assertTrue(texto.contains("INSCOM[\"titulo\",\"contenido\",\"prioridad\",\"fecha_expiracion\"]"));
+        assertTrue(texto.contains("INSEVT[\"titulo\",\"descripcion\",\"fecha_inicio\",\"fecha_fin\",\"lugar\",\"imagen_url\"]"));
+        assertTrue(texto.contains("INSGAL[\"titulo\",\"descripcion\",\"imagen_url\",\"evento_id\",\"orden\"]"));
+    }
 }
