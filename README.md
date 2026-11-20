@@ -115,6 +115,17 @@ inactivos como `EDITOR_INSTITUCIONAL` hasta que el administrador les asigne uno 
 | `red_social` | **id**, nombre (único), url, orden | Redes sociales (RF-16) |
 | `bitacora` | **id**, fecha, usuario, accion, modulo, tabla, elemento, detalle | Acciones de los administradores en todos los casos de uso (RF-19) |
 
+### CU3 Información Académica, Malla Curricular y Plantel Docente (`cu3_academica.sql`)
+
+| Tabla | Columnas | Uso |
+|-------|----------|-----|
+| `info_academica` | **id**, titulo, contenido, orden, actualizado | Plan de estudios, modalidades de graduación, calendario académico y reglamentos (RF-05) |
+| `materia` | **id**, sigla (única), nombre, semestre, creditos, prerrequisito | Malla curricular: materias por semestre con sus créditos y prerrequisitos (RF-04) |
+| `docente` | **id**, nombre, titulo, cargo, correo, materia_id | Plantel docente; `materia_id` es la materia que dicta, si tiene (RF-03) |
+
+`semestre` y `orden` deben ser mayores a cero y `creditos` no puede ser negativo (`CHECK`). Al eliminar una materia, sus
+docentes quedan sin materia asignada (`ON DELETE SET NULL`).
+
 ### CU4 Investigaciones, Revista INNOVAR y Repositorio Documental (`cu4_investigacion.sql`)
 
 | Tabla | Columnas | Uso |
@@ -141,6 +152,18 @@ en borrador hasta publicarla; lo oculto y los borradores solo los ve quien admin
 
 Los valores permitidos de `tipo`, `estado` y `sector` están en restricciones `CHECK` y se validan antes de llegar a la base.
 La descripción de INNOVA se guarda en `configuracion` (clave `innova_descripcion`).
+
+### CU6 Noticias, Comunicados, Eventos y Galería (`cu6_noticias.sql`)
+
+| Tabla | Columnas | Uso |
+|-------|----------|-----|
+| `noticia` | **id**, titulo, resumen, contenido, imagen_url, autor, fecha_publicacion, publicado, orden, creado | Noticias de la Carrera (RF-12) |
+| `comunicado` | **id**, titulo, contenido, prioridad, fecha_publicacion, fecha_expiracion, creado | Comunicados y avisos con prioridad y fecha de expiración (RF-12) |
+| `evento` | **id**, titulo, descripcion, fecha_inicio, fecha_fin, lugar, imagen_url, creado | Agenda de eventos y actividades (RF-13) |
+| `galeria` | **id**, titulo, descripcion, imagen_url, evento_id, orden, creado | Imágenes de la galería, asociadas opcionalmente a un evento (RF-14) |
+
+`prioridad`: BAJA, MEDIA, ALTA o URGENTE (`CHECK`). Al eliminar un evento, sus imágenes se conservan sin evento
+(`ON DELETE SET NULL`).
 
 ### CU7 Formulario de Contacto y Búsqueda Interna Global (`cu7_contacto.sql`)
 
@@ -213,6 +236,25 @@ MODINT["mision","Misión","Formar profesionales en Administración de Empresas..
 INSRED["TikTok","https://www.tiktok.com/","4"]
 ```
 
+### CU3 Información Académica, Malla Curricular y Plantel Docente
+
+| Comando | Acceso | Descripción |
+|---------|--------|-------------|
+| `LISINF["*"]` | Público | Información académica y reglamentos |
+| `INSINF["titulo","contenido","orden"]` · `MODINF["id",...]` · `ELIINF["id"]` | Editor institucional | Secciones de información académica; el orden debe ser mayor a cero |
+| `LISMAT["*"]` | Público | Materias de la malla curricular (filtro por sigla, nombre o prerrequisito) |
+| `INSMAT["sigla","nombre","semestre","creditos","prerrequisito"]` · `MODMAT["id",...]` · `ELIMAT["id"]` | Editor institucional | La sigla no se puede repetir; semestre mayor a cero y créditos no negativos; el prerrequisito es opcional |
+| `LISDOC["*"]` | Público | Plantel docente (filtro por nombre, título, cargo, correo o materia) |
+| `INSDOC["nombre","titulo","cargo","correo","materia_id"]` · `MODDOC["id",...]` · `ELIDOC["id"]` | Editor institucional | Solo el nombre es obligatorio; materia_id va vacío o con el ID de una materia registrada |
+
+Ejemplos:
+
+```
+INSMAT["ADM600","Gestión Estratégica","6","5","ADM500"]
+INSDOC["Lic. Ana Vaca Suárez","Magíster en Finanzas","Docente titular","ana.vaca@uagrm.edu.bo","5"]
+INSINF["Reglamento de Titulación","Modalidades: tesis, proyecto de grado, trabajo dirigido y excelencia académica.","4"]
+```
+
 ### CU4 Investigaciones, Revista INNOVAR y Repositorio Documental
 
 Los comandos públicos muestran solo lo publicado; quien administra el CU4 ve también lo oculto y los borradores.
@@ -263,6 +305,32 @@ ATESOL["3","ATENDIDA","Un consultor de INNOVA le llamará esta semana."]
 ```
 
 Las opciones aceptan minúsculas y tildes: `"práctica"` se guarda como `PRACTICA` y `"en trámite"` como `EN_TRAMITE`.
+
+### CU6 Noticias, Comunicados, Eventos y Galería
+
+`LISNOT` muestra al público solo las noticias publicadas y `LISCOM` solo los comunicados vigentes; quien gestiona el
+CU6 ve también las no publicadas y los vencidos.
+
+| Comando | Acceso | Descripción |
+|---------|--------|-------------|
+| `LISNOT["*"]` · `VERNOT["id"]` | Público | Noticias y detalle completo de una noticia |
+| `INSNOT["titulo","resumen","contenido","imagen_url","autor","orden"]` · `MODNOT["id",...]` · `ELINOT["id"]` | Editor de comunicación | imagen_url es opcional; el orden debe ser mayor a cero |
+| `LISCOM["*"]` | Público | Comunicados y avisos |
+| `INSCOM["titulo","contenido","prioridad","fecha_expiracion"]` · `MODCOM["id",...]` · `ELICOM["id"]` | Editor de comunicación | prioridad: BAJA, MEDIA, ALTA o URGENTE; fecha_expiracion es opcional y debe ser posterior a la publicación |
+| `LISEVT["*"]` | Público | Eventos y actividades de la Carrera |
+| `INSEVT["titulo","descripcion","fecha_inicio","fecha_fin","lugar","imagen_url"]` · `MODEVT["id",...]` · `ELIEVT["id"]` | Editor de comunicación | fecha_fin es opcional y debe ser posterior a fecha_inicio; imagen_url es opcional |
+| `LISGAL["*"]` | Público | Imágenes de la galería con su evento |
+| `INSGAL["titulo","descripcion","imagen_url","evento_id","orden"]` · `MODGAL["id",...]` · `ELIGAL["id"]` | Editor de comunicación | evento_id va vacío o con el ID de un evento registrado; la descripción es opcional |
+
+Las fechas se escriben `AAAA-MM-DD` o `DD/MM/AAAA`, con hora opcional (`AAAA-MM-DD HH:mm`).
+
+Ejemplos:
+
+```
+INSNOT["Nueva malla curricular 2027","La Carrera aprobó la nueva malla curricular","El Consejo de Carrera aprobó la actualización de la malla curricular que entrará en vigencia en 2027.","https://www.tecnoweb.org.bo/inf513/grupo17sa/img/malla.jpg","Dirección de Carrera","1"]
+INSCOM["Suspensión de clases","Se suspenden las clases el viernes por el aniversario de la Facultad.","alta","2026-12-31"]
+INSEVT["Feria de emprendimiento","Exposición de planes de negocio de los estudiantes","2026-11-25","2026-11-27","Auditorio de la FCEE","https://www.tecnoweb.org.bo/inf513/grupo17sa/img/feria.jpg"]
+```
 
 ### CU7 Formulario de Contacto y Búsqueda Interna Global
 
